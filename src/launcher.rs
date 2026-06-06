@@ -1,5 +1,6 @@
 use crate::{
     list::LauncherDelegate,
+    scanner::run_scan,
     types::{Item, Kind, RunCommand},
 };
 use gpui::*;
@@ -18,38 +19,9 @@ actions!(launcher, [SelectNext, SelectPrev, Confirm, Cancel]);
 impl LauncherState {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let input = cx.new(|cx| InputState::new(window, cx));
+        let items = run_scan();
 
-        let dummy_items = vec![
-            Item {
-                name: "Notepad".to_string(),
-                kind: Kind::App,
-                icon_path: None,
-                running_command: Some(RunCommand {
-                    command: "notepad.exe".to_string(),
-                    args: vec![],
-                }),
-            },
-            Item {
-                name: "Calculator".to_string(),
-                kind: Kind::App,
-                icon_path: None,
-                running_command: Some(RunCommand {
-                    command: "calc.exe".to_string(),
-                    args: vec![],
-                }),
-            },
-            Item {
-                name: "Explorer".to_string(),
-                kind: Kind::App,
-                icon_path: None,
-                running_command: Some(RunCommand {
-                    command: "explorer.exe".to_string(),
-                    args: vec![],
-                }),
-            },
-        ];
-
-        let list = cx.new(|cx| ListState::new(LauncherDelegate::new(dummy_items), window, cx));
+        let list = cx.new(|cx| ListState::new(LauncherDelegate::new(items), window, cx));
 
         cx.subscribe_in::<_, InputEvent>(&input, window, |view, state, _event, _window, cx| {
             let input = state.read(cx).value();
@@ -90,6 +62,7 @@ impl LauncherState {
         self.list.update(cx, |list, cx| {
             let ix = list.delegate().select_next();
             list.set_selected_index(ix, window, cx);
+            list.scroll_to_selected_item(window, cx);
         });
     }
 
@@ -97,6 +70,7 @@ impl LauncherState {
         self.list.update(cx, |list, cx| {
             let ix = list.delegate().select_prev();
             list.set_selected_index(ix, window, cx);
+            list.scroll_to_selected_item(window, cx);
         });
     }
 

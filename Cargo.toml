@@ -9,3 +9,5 @@ gpui_platform = { git = "https://github.com/zed-industries/zed", features = ["fo
 gpui-component = { git = "https://github.com/longbridge/gpui-component" }
 gpui-component-assets = { git = "https://github.com/longbridge/gpui-component" }
 anyhow = "1.0"
+walkdir = "2"
+lnk = "0.6"

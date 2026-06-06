@@ -6,6 +6,7 @@ use crate::launcher::{Cancel, Confirm, LauncherState, SelectNext, SelectPrev};
 mod launcher;
 pub mod list;
 pub mod types;
+pub mod scanner;
 
 fn main() {
     let app = gpui_platform::application().with_assets(gpui_component_assets::Assets);
