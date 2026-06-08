@@ -1,7 +1,5 @@
 use std::path::PathBuf;
 
-use gpui_component::Selectable;
-
 #[derive(Debug, Clone)]
 pub struct RunCommand {
     pub command: String,
