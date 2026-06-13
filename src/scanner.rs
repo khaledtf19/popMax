@@ -1,6 +1,19 @@
-use crate::types::{Item, Kind, RunCommand};
+use std::path::PathBuf;
 
-fn scan_directory(path: &str) -> Vec<Item> {
+use crate::{
+    types::{AppIcon, Item, Kind, RunCommand},
+    windows_icons::extract_icon,
+};
+use rayon::prelude::*;
+
+struct ScannedApp {
+    name: String,
+    target: String,
+    icon_location: PathBuf,
+    icon_index: i32,
+}
+
+fn scan_directory(path: &str) -> Vec<ScannedApp> {
     let mut result = Vec::new();
     for entry in walkdir::WalkDir::new(path) {
         let Ok(entry) = entry else { continue };
@@ -13,7 +26,11 @@ fn scan_directory(path: &str) -> Vec<Item> {
                 continue;
             };
 
-            if !target.ends_with(".exe") {
+            if PathBuf::from(&target)
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .is_none_or(|ext| !ext.eq_ignore_ascii_case("exe"))
+            {
                 continue;
             }
 
@@ -24,14 +41,17 @@ fn scan_directory(path: &str) -> Vec<Item> {
                 .unwrap_or_default()
                 .to_string();
 
-            result.push(Item {
-                name: name,
-                kind: Kind::App,
-                icon_path: None,
-                running_command: Some(RunCommand {
-                    command: target,
-                    args: vec![],
-                }),
+            let (location, icon_index) = match lnk.string_data().icon_location().clone() {
+                Some(location) => (location, *lnk.header().icon_index()),
+                None => (target.clone(), 0),
+            };
+            // let icon_path = extract_icon(Path::new(&location), icon_index);
+
+            result.push(ScannedApp {
+                name,
+                target,
+                icon_location: PathBuf::from(location),
+                icon_index,
             });
         }
     }
@@ -45,11 +65,27 @@ pub fn run_scan() -> Vec<Item> {
     let programs_path = r"C:\ProgramData\Microsoft\Windows\Start Menu\Programs";
 
     let dirs = [&user_start_menu, programs_path];
-    let mut res = vec![];
+    let mut scanned_apps = vec![];
 
     for dir in dirs {
-        res.extend(scan_directory(dir));
+        scanned_apps.extend(scan_directory(dir));
     }
+    let items = scanned_apps
+        .into_par_iter()
+        .map(|app| {
+            let icon_path = extract_icon(&app.icon_location, app.icon_index);
 
-    res
+            Item {
+                name: app.name,
+                kind: Kind::App,
+                icon_path: icon_path.map(AppIcon::File),
+                running_command: Some(RunCommand {
+                    command: app.target,
+                    args: vec![],
+                }),
+            }
+        })
+        .collect::<Vec<_>>();
+
+    items
 }

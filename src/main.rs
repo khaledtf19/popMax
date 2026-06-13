@@ -9,6 +9,7 @@ pub mod list;
 mod load_themes;
 pub mod scanner;
 pub mod types;
+pub mod windows_icons;
 
 fn main() {
     let app = gpui_platform::application().with_assets(gpui_component_assets::Assets);

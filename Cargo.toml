@@ -11,3 +11,12 @@ gpui-component-assets = { git = "https://github.com/longbridge/gpui-component" }
 anyhow = "1.0"
 walkdir = "2"
 lnk = "0.6"
+image = "0.25"
+windows = { version = "0.58", features = [
+    "Win32_Foundation",
+    "Win32_UI_Shell",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_Graphics_Gdi",
+] }
+widestring = "1.0"
+rayon = "1.12.0"
