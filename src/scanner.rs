@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::{
-    types::{AppIcon, Item, Kind, RunCommand},
+    types::{Item, Kind, RunCommand},
     windows_icons::extract_icon,
 };
 use rayon::prelude::*;
@@ -41,16 +41,19 @@ fn scan_directory(path: &str) -> Vec<ScannedApp> {
                 .unwrap_or_default()
                 .to_string();
 
-            let (location, icon_index) = match lnk.string_data().icon_location().clone() {
-                Some(location) => (location, *lnk.header().icon_index()),
-                None => (target.clone(), 0),
-            };
-            // let icon_path = extract_icon(Path::new(&location), icon_index);
+            let icon_path = lnk
+                .string_data()
+                .icon_location()
+                .as_ref()
+                .map(PathBuf::from)
+                .unwrap_or_else(|| PathBuf::from(&target));
+
+            let icon_index = *lnk.header().icon_index();
 
             result.push(ScannedApp {
                 name,
                 target,
-                icon_location: PathBuf::from(location),
+                icon_location: icon_path,
                 icon_index,
             });
         }
@@ -74,11 +77,10 @@ pub fn run_scan() -> Vec<Item> {
         .into_par_iter()
         .map(|app| {
             let icon_path = extract_icon(&app.icon_location, app.icon_index);
-
             Item {
                 name: app.name,
                 kind: Kind::App,
-                icon_path: icon_path.map(AppIcon::File),
+                icon_path: icon_path,
                 running_command: Some(RunCommand {
                     command: app.target,
                     args: vec![],

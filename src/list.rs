@@ -1,5 +1,7 @@
 use std::rc::Rc;
 
+use crate::types::Item;
+use gpui::img;
 use gpui::prelude::FluentBuilder;
 use gpui::*;
 use gpui_component::button::{Button, ButtonVariants};
@@ -7,8 +9,6 @@ use gpui_component::label::Label;
 use gpui_component::{
     ActiveTheme, Icon, IconName, VirtualListScrollHandle, h_flex, v_virtual_list,
 };
-
-use crate::types::Item;
 
 pub struct LauncherList {
     pub items: Vec<Item>,
@@ -107,6 +107,12 @@ impl Render for LauncherList {
                     .filter_map(|ix| {
                         let item = view.filtered.get(ix)?;
 
+                        let icon = if let Some(path) = &item.icon_path {
+                            img(path.clone())
+                        } else {
+                            img("/icons/placeHolderIcon.svg")
+                        };
+
                         Some(
                             h_flex()
                                 .gap_1()
@@ -124,7 +130,7 @@ impl Render for LauncherList {
                                     h_flex()
                                         .items_center()
                                         .gap_3()
-                                        .child(Icon::new(IconName::Star))
+                                        .child(icon)
                                         .child(Label::new(item.name.clone())),
                                 )
                                 .child(
