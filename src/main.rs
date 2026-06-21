@@ -1,14 +1,16 @@
 use gpui::*;
 use gpui_component::Root;
 
-use crate::launcher::{Cancel, Confirm, LauncherState, SelectNext, SelectPrev};
+use crate::launcher::{
+    Cancel, Confirm, FocusSearch, LauncherState, SelectNext, SelectPrev, ToggleFavorite,
+};
 
-pub mod app_theme;
+pub mod components;
 mod launcher;
-pub mod list;
 mod load_themes;
 pub mod scanner;
 pub mod types;
+pub mod utils;
 pub mod windows_icons;
 
 fn main() {
@@ -24,6 +26,8 @@ fn main() {
             KeyBinding::new("up", SelectPrev, None),
             KeyBinding::new("enter", Confirm, None),
             KeyBinding::new("escape", Cancel, None),
+            KeyBinding::new("ctrl-d", ToggleFavorite, None),
+            KeyBinding::new("ctrl-k", FocusSearch, None),
         ]);
 
         cx.open_window(

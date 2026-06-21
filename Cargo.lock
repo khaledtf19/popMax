@@ -14,6 +14,8 @@ dependencies = [
  "image",
  "lnk",
  "rayon",
+ "serde",
+ "serde_json",
  "walkdir",
  "widestring",
  "windows 0.58.0",

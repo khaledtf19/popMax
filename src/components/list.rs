@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::rc::Rc;
 
 use crate::types::Item;
@@ -6,9 +7,9 @@ use gpui::prelude::FluentBuilder;
 use gpui::*;
 use gpui_component::button::{Button, ButtonVariants};
 use gpui_component::label::Label;
-use gpui_component::{
-    ActiveTheme, Icon, IconName, VirtualListScrollHandle, h_flex, v_virtual_list,
-};
+use gpui_component::{ActiveTheme, IconName, VirtualListScrollHandle, h_flex, v_virtual_list};
+
+pub struct ToggleFavoriteEvent(pub usize);
 
 pub struct LauncherList {
     pub items: Vec<Item>,
@@ -16,7 +17,10 @@ pub struct LauncherList {
     pub selected_index: Option<usize>,
     item_sizes: Rc<Vec<Size<Pixels>>>,
     scroll_handle: VirtualListScrollHandle,
+    pub favorite_ids: Vec<String>,
 }
+
+impl EventEmitter<ToggleFavoriteEvent> for LauncherList {}
 
 impl LauncherList {
     pub fn new(items: Vec<Item>) -> Self {
@@ -28,7 +32,12 @@ impl LauncherList {
             item_sizes,
             selected_index: None,
             scroll_handle: VirtualListScrollHandle::new(),
+            favorite_ids: Vec::new(),
         }
+    }
+
+    pub fn is_favorite(&self, item: &Item) -> bool {
+        self.favorite_ids.iter().any(|id| id == &item.id)
     }
 
     pub fn update_filtered(&mut self, input: &str, cx: &mut Context<Self>) {
@@ -110,22 +119,49 @@ impl Render for LauncherList {
                         let icon = if let Some(path) = &item.icon_path {
                             img(path.clone())
                         } else {
-                            img("/icons/placeHolderIcon.svg")
+                            let themes_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                                .join("src/icons/placeHolderIcon.svg");
+                            img(themes_dir)
                         };
+
+                        // let is_fav = view.is_favorite(item);
 
                         Some(
                             h_flex()
+                                .id(format!("item-{}", ix))
                                 .gap_1()
                                 .items_center()
                                 .justify_between()
                                 .w_full()
                                 .h(px(56.))
-                                .px_4()
+                                .px_2()
                                 .py_2()
                                 .rounded_lg()
                                 .when(view.selected_index == Some(ix), |this| {
-                                    this.border_1().border_color(cx.theme().list_active_border)
+                                    this.bg(cx.theme().background)
                                 })
+                                .hover(|this| this.bg(cx.theme().background.opacity(0.5)))
+                                .cursor_pointer()
+                                .on_click(cx.listener(move |list, _, window, _cx| {
+                                    list.selected_index = Some(ix);
+                                    if let Some(command) = list
+                                        .filtered
+                                        .get(ix)
+                                        .and_then(|item| item.running_command.as_ref())
+                                    {
+                                        match std::process::Command::new(&command.command)
+                                            .args(&command.args)
+                                            .spawn()
+                                        {
+                                            Ok(_) => {
+                                                window.remove_window();
+                                            }
+                                            Err(e) => {
+                                                eprintln!("Failed to spawn command: {}", e);
+                                            }
+                                        }
+                                    }
+                                }))
                                 .child(
                                     h_flex()
                                         .items_center()
@@ -136,13 +172,24 @@ impl Render for LauncherList {
                                 .child(
                                     Button::new(format!("pin-{ix}"))
                                         .ghost()
-                                        .icon(IconName::Star),
+                                        .icon(if view.is_favorite(item) {
+                                            IconName::StarFill
+                                        } else {
+                                            IconName::Star
+                                        })
+                                        .on_click(cx.listener(move |_list, _, _, cx| {
+                                            cx.stop_propagation();
+                                            cx.emit(ToggleFavoriteEvent(ix));
+                                        })),
                                 ),
                         )
                     })
                     .collect()
             },
         )
+        .bg(cx.theme().secondary)
+        .p_1()
+        .rounded_md()
         .track_scroll(&self.scroll_handle)
     }
 }

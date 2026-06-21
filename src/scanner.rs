@@ -1,4 +1,7 @@
-use std::path::PathBuf;
+use std::{
+    hash::{Hash, Hasher},
+    path::PathBuf,
+};
 
 use crate::{
     types::{Item, Kind, RunCommand},
@@ -7,10 +10,18 @@ use crate::{
 use rayon::prelude::*;
 
 struct ScannedApp {
+    id: String,
     name: String,
     target: String,
     icon_location: PathBuf,
     icon_index: i32,
+}
+
+/// Make an ID for a scanned app from its path.
+fn make_id(path: &std::path::Path) -> String {
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    path.hash(&mut h);
+    format!("{:016x}", h.finish())
 }
 
 fn scan_directory(path: &str) -> Vec<ScannedApp> {
@@ -50,7 +61,10 @@ fn scan_directory(path: &str) -> Vec<ScannedApp> {
 
             let icon_index = *lnk.header().icon_index();
 
+            let id = make_id(entry.path());
+
             result.push(ScannedApp {
+                id,
                 name,
                 target,
                 icon_location: icon_path,
@@ -78,6 +92,7 @@ pub fn run_scan() -> Vec<Item> {
         .map(|app| {
             let icon_path = extract_icon(&app.icon_location, app.icon_index);
             Item {
+                id: app.id,
                 name: app.name,
                 kind: Kind::App,
                 icon_path: icon_path,

@@ -1,20 +1,23 @@
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RunCommand {
     pub command: String,
     pub args: Vec<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Item {
+    #[serde(default)]
+    pub id: String,
     pub name: String,
-    pub kind: Kind, // maybe a Command or an App
+    pub kind: Kind,
     pub icon_path: Option<PathBuf>,
     pub running_command: Option<RunCommand>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Kind {
     Command,
     App,
