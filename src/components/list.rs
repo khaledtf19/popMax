@@ -124,8 +124,6 @@ impl Render for LauncherList {
                             img(themes_dir)
                         };
 
-                        // let is_fav = view.is_favorite(item);
-
                         Some(
                             h_flex()
                                 .id(format!("item-{}", ix))

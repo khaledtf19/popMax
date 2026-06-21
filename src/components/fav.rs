@@ -3,8 +3,7 @@ use std::path::PathBuf;
 use crate::{types::Item, utils::get_load_path};
 use gpui::*;
 use gpui_component::{
-    ActiveTheme, Icon, IconName, Sizable,
-    badge::Badge,
+    ActiveTheme, IconName, Sizable,
     button::{Button, ButtonVariants},
     h_flex,
     kbd::Kbd,
@@ -50,6 +49,9 @@ impl Fav {
 
     pub fn add_favorite(&mut self, item: Item, cx: &mut Context<Self>) {
         if self.favorites.len() >= 6 {
+            return;
+        }
+        if self.is_favorite(&item.id) {
             return;
         }
         self.favorites.push(item);
@@ -99,7 +101,7 @@ impl Render for Fav {
                         .border_color(cx.theme().border)
                         .hover(|this| this.bg(cx.theme().secondary_hover))
                         .cursor_pointer()
-                        .on_click(cx.listener(move |this, _, window, _cx| {
+                        .on_click(cx.listener(move |_this, _, _window, _cx| {
                             // this.(&item_clone, window);
                         }))
                         .child(icon.size_8())

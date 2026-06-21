@@ -5,7 +5,7 @@ use crate::types::Item;
 use gpui::prelude::FluentBuilder;
 use gpui::*;
 use gpui_component::{
-    ActiveTheme, Icon, IconName, Sizable,
+    ActiveTheme, Icon, IconName,
     input::{Input, InputEvent, InputState},
     kbd,
 };
@@ -71,7 +71,7 @@ impl LauncherState {
             window,
             |view, _, event, _window, cx| {
                 let ix = event.0;
-                let Some(item) = view.get_item(ix, &cx) else {
+                let Some(item) = view.get_item(ix, cx) else {
                     return;
                 };
 
@@ -203,8 +203,7 @@ impl LauncherState {
 
 impl Render for LauncherState {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let favorites = self.fav.read(cx).favorites.clone();
-        let has_favorites = !favorites.is_empty();
+        let has_favorites = !self.fav.read(cx).favorites.is_empty();
 
         div()
             .on_action(cx.listener(Self::select_next))
@@ -217,10 +216,12 @@ impl Render for LauncherState {
                 if e.keystroke.modifiers.control {
                     if let Some(digit) = e.keystroke.key.chars().next().and_then(|c| c.to_digit(10))
                     {
-                        let ix = (digit.saturating_sub(1) as usize);
-                        let item = this.fav.read(cx).favorites.get(ix).cloned();
-                        if let Some(item) = item {
-                            this.launch_item(&item, window);
+                        if digit >= 1 && digit <= 6 {
+                            let ix = digit.saturating_sub(1) as usize;
+                            let item = this.fav.read(cx).favorites.get(ix).cloned();
+                            if let Some(item) = item {
+                                this.launch_item(&item, window);
+                            }
                         }
                     }
                 }
