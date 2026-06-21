@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 use crate::types::Item;
+use crate::utils::asset_path;
 use gpui::img;
 use gpui::prelude::FluentBuilder;
 use gpui::*;
@@ -119,9 +120,11 @@ impl Render for LauncherList {
                         let icon = if let Some(path) = &item.icon_path {
                             img(path.clone())
                         } else {
-                            let themes_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                                .join("src/icons/placeHolderIcon.svg");
-                            img(themes_dir)
+                            let placeholder = asset_path("icons/placeHolderIcon.svg")
+                                .filter(|p| p.exists())
+                                .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                                    .join("src/icons/placeHolderIcon.svg"));
+                            img(placeholder)
                         };
 
                         Some(
