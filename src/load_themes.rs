@@ -12,8 +12,7 @@ fn dir_has_json_files(dir: &PathBuf) -> bool {
     std::fs::read_dir(dir)
         .map(|entries| {
             entries.flatten().any(|e| {
-                e.path().is_file()
-                    && e.path().extension().and_then(|s| s.to_str()) == Some("json")
+                e.path().is_file() && e.path().extension().and_then(|s| s.to_str()) == Some("json")
             })
         })
         .unwrap_or(false)
@@ -24,8 +23,6 @@ pub fn init(cx: &mut App) {
     let themes_dir = asset_path("themes")
         .filter(|p| dir_has_json_files(p))
         .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/themes"));
-
-    eprintln!("[PopMax] Using themes dir: {themes_dir:?}");
 
     if let Err(err) = ThemeRegistry::watch_dir(themes_dir, cx, move |cx| {
         if let Some(theme_config) = ThemeRegistry::global(cx).themes().get(&theme_name).cloned() {

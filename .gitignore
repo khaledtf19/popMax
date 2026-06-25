@@ -1,1 +1,6 @@
 /target
+target/
+installer/output/
+installer/dist/
+*.exe
+*.msi

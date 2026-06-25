@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crate::components::list::ToggleFavoriteEvent;
 use crate::components::{fav::Fav, list::LauncherList};
 use crate::scanner::run_scan;
@@ -9,11 +11,19 @@ use gpui_component::{
     input::{Input, InputEvent, InputState},
     kbd,
 };
+use widestring::u16cstr;
+use windows::Win32::Foundation::HWND;
+use windows::Win32::UI::WindowsAndMessaging::{
+    FindWindowW, SW_HIDE, SW_SHOW, SetForegroundWindow, ShowWindow,
+};
+use windows::core::PCWSTR;
 
 pub struct LauncherState {
     input: Entity<InputState>,
     list: Entity<LauncherList>,
     fav: Entity<Fav>,
+    hwnd: HWND,
+    is_visible: bool,
 }
 
 actions!(
@@ -29,7 +39,11 @@ actions!(
 );
 
 impl LauncherState {
-    pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(
+        window: &mut Window,
+        cx: &mut Context<Self>,
+        hotkey_rx: crossbeam_channel::Receiver<crate::hotkey::HotkeyEvent>,
+    ) -> Self {
         let input = cx.new(|cx| {
             let input = InputState::new(window, cx).placeholder("Search...");
 
@@ -38,6 +52,10 @@ impl LauncherState {
             input
         });
         let items = run_scan();
+
+        let hwnd = unsafe { FindWindowW(None, PCWSTR(u16cstr!("PopMax").as_ptr())) }
+            .expect("Failed to find PopMax window");
+        let is_visible = true;
 
         let list = cx.new(|_cx| LauncherList::new(items));
 
@@ -98,7 +116,43 @@ impl LauncherState {
         )
         .detach();
 
-        Self { input, list, fav }
+        cx.spawn_in(window, async move |this, cx: &mut AsyncWindowContext| {
+            loop {
+                while let Ok(_event) = hotkey_rx.try_recv() {
+                    this.update_in(cx, |this, window, cx| {
+                        if this.is_visible {
+                            unsafe {
+                                ShowWindow(this.hwnd, SW_HIDE);
+                            }
+                            this.is_visible = false;
+                        } else {
+                            unsafe {
+                                ShowWindow(this.hwnd, SW_SHOW);
+                                SetForegroundWindow(this.hwnd);
+                            }
+                            window.activate_window();
+                            this.is_visible = true;
+                            this.input.update(cx, |input, cx| {
+                                input.focus(window, cx);
+                            });
+                        }
+                    })
+                    .ok();
+                }
+                cx.background_executor()
+                    .timer(Duration::from_millis(16))
+                    .await;
+            }
+        })
+        .detach();
+
+        Self {
+            input,
+            list,
+            fav,
+            hwnd,
+            is_visible,
+        }
     }
 
     fn get_item(&self, ix: usize, cx: &Context<Self>) -> Option<Item> {
@@ -119,24 +173,23 @@ impl LauncherState {
         });
     }
 
-    fn launch_item(&self, item: &Item, window: &mut Window) {
+    fn launch_item(&self, item: &Item) -> bool {
         let Some(command) = &item.running_command else {
-            return;
+            return false;
         };
         match std::process::Command::new(&command.command)
             .args(&command.args)
             .spawn()
         {
-            Ok(_) => {
-                window.remove_window();
-            }
+            Ok(_) => true,
             Err(e) => {
                 eprintln!("Failed to spawn command: {}", e);
+                false
             }
         }
     }
 
-    fn confirm(&mut self, _: &Confirm, window: &mut Window, cx: &mut Context<Self>) {
+    fn confirm(&mut self, _: &Confirm, _window: &mut Window, cx: &mut Context<Self>) {
         let list = self.list.read(cx);
         let Some(ix) = list.selected_index else {
             return;
@@ -144,11 +197,19 @@ impl LauncherState {
         let Some(item) = list.filtered.get(ix) else {
             return;
         };
-        self.launch_item(item, window);
+        if self.launch_item(item) {
+            unsafe {
+                ShowWindow(self.hwnd, SW_HIDE);
+            }
+            self.is_visible = false;
+        }
     }
 
-    fn cancel(&mut self, _: &Cancel, window: &mut Window, _cx: &mut Context<Self>) {
-        window.remove_window();
+    fn cancel(&mut self, _: &Cancel, _window: &mut Window, _cx: &mut Context<Self>) {
+        unsafe {
+            ShowWindow(self.hwnd, SW_HIDE);
+        }
+        self.is_visible = false;
     }
 
     fn toggle_favorite(
@@ -212,7 +273,7 @@ impl Render for LauncherState {
             .on_action(cx.listener(Self::cancel))
             .on_action(cx.listener(Self::toggle_favorite))
             .on_action(cx.listener(Self::focus_search))
-            .on_key_down(cx.listener(|this, e: &KeyDownEvent, window, cx| {
+            .on_key_down(cx.listener(|this, e: &KeyDownEvent, _window, cx| {
                 if e.keystroke.modifiers.control {
                     if let Some(digit) = e.keystroke.key.chars().next().and_then(|c| c.to_digit(10))
                     {
@@ -220,7 +281,12 @@ impl Render for LauncherState {
                             let ix = digit.saturating_sub(1) as usize;
                             let item = this.fav.read(cx).favorites.get(ix).cloned();
                             if let Some(item) = item {
-                                this.launch_item(&item, window);
+                                if this.launch_item(&item) {
+                                    unsafe {
+                                        ShowWindow(this.hwnd, SW_HIDE);
+                                    }
+                                    this.is_visible = false;
+                                }
                             }
                         }
                     }
