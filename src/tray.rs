@@ -14,10 +14,9 @@ use windows::{
                 DispatchMessageW, GetCursorPos, GetMessageW, HICON, HMENU, HWND_NOTOPMOST,
                 HWND_TOPMOST, IDI_APPLICATION, IMAGE_ICON, LR_DEFAULTSIZE, LR_LOADFROMFILE,
                 LoadIconW, LoadImageW, MF_STRING, MSG, PostMessageW, RegisterClassW, SWP_NOMOVE,
-                SWP_NOSIZE, SetForegroundWindow, SetWindowPos, TPM_LEFTBUTTON,
-                TPM_RETURNCMD, TrackPopupMenu, TranslateMessage, WINDOW_EX_STYLE, WINDOW_STYLE,
-                WM_APP, WM_CONTEXTMENU, WM_DESTROY, WM_NULL, WM_RBUTTONDOWN, WM_RBUTTONUP,
-                WNDCLASSW,
+                SWP_NOSIZE, SetForegroundWindow, SetWindowPos, TPM_LEFTBUTTON, TPM_RETURNCMD,
+                TrackPopupMenu, TranslateMessage, WINDOW_EX_STYLE, WINDOW_STYLE, WM_APP,
+                WM_CONTEXTMENU, WM_DESTROY, WM_NULL, WM_RBUTTONDOWN, WM_RBUTTONUP, WNDCLASSW,
             },
         },
     },
@@ -95,7 +94,7 @@ unsafe extern "system" fn tray_wnd_proc(
     match msg {
         TRAY_CALLBACK if wparam.0 as u32 == TRAY_ID => {
             let event = lparam.0 as u32;
-            eprintln!("[PopMax Tray] callback event=0x{event:04x}");
+            // eprintln!("[PopMax Tray] callback event=0x{event:04x}");
             if event == WM_CONTEXTMENU || event == WM_RBUTTONUP || event == WM_RBUTTONDOWN {
                 unsafe {
                     show_context_menu(hwnd);
@@ -160,6 +159,7 @@ fn tray_icon_paths() -> Vec<PathBuf> {
         }
     }
 
+    paths.push(PathBuf::from("assets").join("PopMaxIcon.ico"));
     paths.push(PathBuf::from("installer").join("PopMaxIcon.ico"));
 
     paths

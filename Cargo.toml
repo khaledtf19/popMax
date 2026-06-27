@@ -3,6 +3,9 @@ name = "PopMax"
 version = "0.1.0"
 edition = "2024"
 
+[build-dependencies]
+embed-resource = "2"
+
 [dependencies]
 gpui = { git = "https://github.com/zed-industries/zed" }
 gpui_platform = { git = "https://github.com/zed-industries/zed", features = ["font-kit"] }
