@@ -7,15 +7,17 @@ use windows::{
         UI::{
             Shell::{
                 NIF_ICON, NIF_MESSAGE, NIF_TIP, NIM_ADD, NIM_DELETE, NIM_SETVERSION,
-                NOTIFYICON_VERSION_4, NOTIFYICONDATAW, Shell_NotifyIconW,
+                NOTIFYICON_VERSION, NOTIFYICONDATAW, Shell_NotifyIconW,
             },
             WindowsAndMessaging::{
                 AppendMenuW, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DestroyMenu,
-                DispatchMessageW, GetCursorPos, GetMessageW, HICON, HMENU, IDI_APPLICATION,
-                IMAGE_ICON, LR_DEFAULTSIZE, LR_LOADFROMFILE, LoadIconW, LoadImageW, MF_STRING, MSG,
-                PostMessageW, RegisterClassW, SetForegroundWindow, TPM_RETURNCMD, TPM_RIGHTBUTTON,
-                TrackPopupMenu, TranslateMessage, WINDOW_EX_STYLE, WINDOW_STYLE, WM_APP,
-                WM_CONTEXTMENU, WM_DESTROY, WM_NULL, WM_RBUTTONUP, WNDCLASSW,
+                DispatchMessageW, GetCursorPos, GetMessageW, HICON, HMENU, HWND_NOTOPMOST,
+                HWND_TOPMOST, IDI_APPLICATION, IMAGE_ICON, LR_DEFAULTSIZE, LR_LOADFROMFILE,
+                LoadIconW, LoadImageW, MF_STRING, MSG, PostMessageW, RegisterClassW, SWP_NOMOVE,
+                SWP_NOSIZE, SetForegroundWindow, SetWindowPos, TPM_LEFTBUTTON,
+                TPM_RETURNCMD, TrackPopupMenu, TranslateMessage, WINDOW_EX_STYLE, WINDOW_STYLE,
+                WM_APP, WM_CONTEXTMENU, WM_DESTROY, WM_NULL, WM_RBUTTONDOWN, WM_RBUTTONUP,
+                WNDCLASSW,
             },
         },
     },
@@ -93,7 +95,8 @@ unsafe extern "system" fn tray_wnd_proc(
     match msg {
         TRAY_CALLBACK if wparam.0 as u32 == TRAY_ID => {
             let event = lparam.0 as u32;
-            if event == WM_CONTEXTMENU || event == WM_RBUTTONUP {
+            eprintln!("[PopMax Tray] callback event=0x{event:04x}");
+            if event == WM_CONTEXTMENU || event == WM_RBUTTONUP || event == WM_RBUTTONDOWN {
                 unsafe {
                     show_context_menu(hwnd);
                 }
@@ -121,7 +124,7 @@ unsafe fn add_tray_icon(hwnd: HWND) -> windows::core::Result<()> {
 
     unsafe {
         Shell_NotifyIconW(NIM_ADD, &data).ok()?;
-        data.Anonymous.uVersion = NOTIFYICON_VERSION_4;
+        data.Anonymous.uVersion = NOTIFYICON_VERSION;
         Shell_NotifyIconW(NIM_SETVERSION, &data).ok()?;
     }
 
@@ -190,13 +193,16 @@ unsafe fn show_context_menu(hwnd: HWND) {
     }
 
     unsafe {
+        // Temporarily make the window topmost so SetForegroundWindow succeeds.
+        // Hidden windows cannot normally become foreground on modern Windows.
+        let _ = SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
         let _ = SetForegroundWindow(hwnd);
     }
 
     let command = unsafe {
         TrackPopupMenu(
             menu,
-            TPM_RETURNCMD | TPM_RIGHTBUTTON,
+            TPM_RETURNCMD | TPM_LEFTBUTTON,
             cursor.x,
             cursor.y,
             0,
@@ -205,10 +211,15 @@ unsafe fn show_context_menu(hwnd: HWND) {
         )
     };
 
-    // PostMessage WM_NULL is required after SetForegroundWindow + TrackPopupMenu
-    // to ensure the context menu behaves correctly. Without this call, the menu
-    // may appear and immediately dismiss or not appear at all.
     unsafe {
+        // Restore window to non-topmost
+        let _ = SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
+    }
+
+    unsafe {
+        // PostMessage WM_NULL is required after SetForegroundWindow + TrackPopupMenu
+        // to ensure the context menu behaves correctly. Without this call, the menu
+        // may appear and immediately dismiss or not appear at all.
         let _ = PostMessageW(hwnd, WM_NULL, WPARAM(0), LPARAM(0));
     }
 

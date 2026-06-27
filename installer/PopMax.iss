@@ -31,7 +31,7 @@ ArchitecturesInstallIn64BitMode=x64compatible
 
 [Files]
 Source: "..\target\release\PopMax.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "PopMaxIcon.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\assets\PopMaxIcon.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\PopMax"; Filename: "{app}\PopMax.exe"
