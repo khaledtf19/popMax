@@ -122,13 +122,13 @@ impl LauncherState {
                     this.update_in(cx, |this, window, cx| {
                         if this.is_visible {
                             unsafe {
-                                ShowWindow(this.hwnd, SW_HIDE);
+                                let _ = ShowWindow(this.hwnd, SW_HIDE);
                             }
                             this.is_visible = false;
                         } else {
                             unsafe {
-                                ShowWindow(this.hwnd, SW_SHOW);
-                                SetForegroundWindow(this.hwnd);
+                                let _ = ShowWindow(this.hwnd, SW_SHOW);
+                                let _ = SetForegroundWindow(this.hwnd);
                             }
                             window.activate_window();
                             this.is_visible = true;
@@ -199,7 +199,7 @@ impl LauncherState {
         };
         if self.launch_item(item) {
             unsafe {
-                ShowWindow(self.hwnd, SW_HIDE);
+                let _ = ShowWindow(self.hwnd, SW_HIDE);
             }
             self.is_visible = false;
         }
@@ -207,7 +207,7 @@ impl LauncherState {
 
     fn cancel(&mut self, _: &Cancel, _window: &mut Window, _cx: &mut Context<Self>) {
         unsafe {
-            ShowWindow(self.hwnd, SW_HIDE);
+            let _ = ShowWindow(self.hwnd, SW_HIDE);
         }
         self.is_visible = false;
     }
@@ -283,7 +283,7 @@ impl Render for LauncherState {
                             if let Some(item) = item {
                                 if this.launch_item(&item) {
                                     unsafe {
-                                        ShowWindow(this.hwnd, SW_HIDE);
+                                        let _ = ShowWindow(this.hwnd, SW_HIDE);
                                     }
                                     this.is_visible = false;
                                 }

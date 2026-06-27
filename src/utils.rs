@@ -8,7 +8,10 @@ pub fn get_load_path() -> Option<PathBuf> {
 
 /// Directory where the executable lives — assets are shipped alongside it.
 pub fn exe_dir() -> Option<PathBuf> {
-    std::env::current_exe().ok()?.parent().map(Path::to_path_buf)
+    std::env::current_exe()
+        .ok()?
+        .parent()
+        .map(Path::to_path_buf)
 }
 
 /// Resolve a path relative to the executable's directory.

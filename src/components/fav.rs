@@ -1,6 +1,9 @@
 use std::path::PathBuf;
 
-use crate::{types::Item, utils::{asset_path, get_load_path}};
+use crate::{
+    types::Item,
+    utils::{asset_path, get_load_path},
+};
 use gpui::*;
 use gpui_component::{
     ActiveTheme, IconName, Sizable,
@@ -82,8 +85,10 @@ impl Render for Fav {
                     } else {
                         let placeholder = asset_path("icons/placeHolderIcon.svg")
                             .filter(|p| p.exists())
-                            .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                                .join("src/icons/placeHolderIcon.svg"));
+                            .unwrap_or_else(|| {
+                                PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                                    .join("src/icons/placeHolderIcon.svg")
+                            });
                         img(placeholder)
                     };
 
