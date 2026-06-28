@@ -1,37 +1,43 @@
 use gpui::{App, SharedString};
 use gpui_component::{Theme, ThemeRegistry};
-use std::path::PathBuf;
 
-use crate::utils::asset_path;
-
-/// Returns true if the directory exists and contains at least one .json file.
-fn dir_has_json_files(dir: &PathBuf) -> bool {
-    if !dir.is_dir() {
-        return false;
-    }
-    std::fs::read_dir(dir)
-        .map(|entries| {
-            entries.flatten().any(|e| {
-                e.path().is_file() && e.path().extension().and_then(|s| s.to_str()) == Some("json")
-            })
-        })
-        .unwrap_or(false)
-}
+const EMBEDDED_THEMES: &[&str] = &[
+    include_str!("themes/adventure.json"),
+    include_str!("themes/alduin.json"),
+    include_str!("themes/asciinema.json"),
+    include_str!("themes/ayu.json"),
+    include_str!("themes/catppuccin.json"),
+    include_str!("themes/everforest.json"),
+    include_str!("themes/fahrenheit.json"),
+    include_str!("themes/flexoki.json"),
+    include_str!("themes/gruvbox.json"),
+    include_str!("themes/harper.json"),
+    include_str!("themes/hybrid.json"),
+    include_str!("themes/jellybeans.json"),
+    include_str!("themes/kibble.json"),
+    include_str!("themes/macos-classic.json"),
+    include_str!("themes/matrix.json"),
+    include_str!("themes/mellifluous.json"),
+    include_str!("themes/molokai.json"),
+    include_str!("themes/solarized.json"),
+    include_str!("themes/spaceduck.json"),
+    include_str!("themes/tokyonight.json"),
+    include_str!("themes/twilight.json"),
+];
 
 pub fn init(cx: &mut App) {
     let theme_name = SharedString::from("Tokyo Night");
-    let themes_dir = asset_path("themes")
-        .filter(|p| dir_has_json_files(p))
-        .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/themes"));
 
-    if let Err(err) = ThemeRegistry::watch_dir(themes_dir, cx, move |cx| {
-        if let Some(theme_config) = ThemeRegistry::global(cx).themes().get(&theme_name).cloned() {
-            Theme::global_mut(cx).apply_config(&theme_config);
-            cx.refresh_windows();
-        } else {
-            eprintln!("Theme not found: {theme_name}");
+    let registry = ThemeRegistry::global_mut(cx);
+    for content in EMBEDDED_THEMES {
+        if let Err(err) = registry.load_themes_from_str(content) {
+            eprintln!("Error loading embedded theme: {err}");
         }
-    }) {
-        eprintln!("Error loading themes: {err}");
+    }
+    if let Some(theme_config) = ThemeRegistry::global(cx).themes().get(&theme_name).cloned() {
+        Theme::global_mut(cx).apply_config(&theme_config);
+        cx.refresh_windows();
+    } else {
+        eprintln!("Theme not found: {theme_name}");
     }
 }

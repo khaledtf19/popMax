@@ -129,3 +129,7 @@ The `build.rs` script embeds `PopMaxIcon.ico` as the app window icon via `embed-
 - **[rayon](https://crates.io/crates/rayon)** — Parallel icon extraction
 - **[Inno Setup](https://jrsoftware.org/isinfo.php)** — Windows installer
 - **Win32 APIs** — `Shell_NotifyIconW`, `ExtractIconExW`, `DrawIconEx`, `RegisterHotKey`, `CreateMutexW`
+ 
+## License
+
+This project is licensed under the MIT License. See the LICENSE file for details.

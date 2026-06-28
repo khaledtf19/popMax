@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 permissions:
   contents: write
@@ -35,7 +35,16 @@ jobs:
         run: |
           $tag = "$env:GITHUB_REF_NAME"
           $zip = "PopMax-${tag}-portable.zip"
-          Compress-Archive -Path target/release/PopMax.exe, assets/PopMaxIcon.ico -DestinationPath $zip -CompressionLevel Optimal
+          $compress = @{
+            Path = @(
+              "target/release/PopMax.exe",
+              "assets/PopMaxIcon.ico",
+              "assets/audio/popup_Sound.mp3"
+            )
+            DestinationPath = $zip
+            CompressionLevel = "Optimal"
+          }
+          Compress-Archive @compress
           Write-Output "Created $zip"
 
       - name: Generate SHA256 hashes
