@@ -5,6 +5,9 @@ use crate::types::{Item, Kind};
 use crate::utils::asset_path;
 use gpui::img;
 use webbrowser;
+use widestring::u16cstr;
+use windows::Win32::UI::WindowsAndMessaging::{FindWindowW, SW_HIDE, ShowWindow};
+use windows::core::PCWSTR;
 use gpui::prelude::FluentBuilder;
 use gpui::*;
 use gpui_component::button::{Button, ButtonVariants};
@@ -159,14 +162,21 @@ impl Render for LauncherList {
                                 })
                                 .hover(|this| this.bg(cx.theme().background.opacity(0.5)))
                                 .cursor_pointer()
-                                .on_click(cx.listener(move |list, _, window, _cx| {
+                                .on_click(cx.listener(move |list, _, _window, _cx| {
                                     list.selected_index = Some(ix);
                                     let Some(item) = list.filtered.get(ix) else {
                                         return;
                                     };
                                     if item.kind == Kind::Search {
                                         let _ = webbrowser::open(&item.id);
-                                        window.remove_window();
+                                        unsafe {
+                                            if let Ok(hwnd) = FindWindowW(
+                                                None,
+                                                PCWSTR(u16cstr!("PopMax").as_ptr()),
+                                            ) {
+                                                let _ = ShowWindow(hwnd, SW_HIDE);
+                                            }
+                                        }
                                     } else if let Some(command) = item.running_command.as_ref()
                                     {
                                         match std::process::Command::new(&command.command)
@@ -174,7 +184,14 @@ impl Render for LauncherList {
                                             .spawn()
                                         {
                                             Ok(_) => {
-                                                window.remove_window();
+                                                unsafe {
+                                                    if let Ok(hwnd) = FindWindowW(
+                                                        None,
+                                                        PCWSTR(u16cstr!("PopMax").as_ptr()),
+                                                    ) {
+                                                        let _ = ShowWindow(hwnd, SW_HIDE);
+                                                    }
+                                                }
                                             }
                                             Err(e) => {
                                                 eprintln!("Failed to spawn command: {}", e);

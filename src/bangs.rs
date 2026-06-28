@@ -77,3 +77,93 @@ pub fn search_url(bang: &Bang, query: &str) -> String {
     let encoded = urlencoding::encode(query);
     bang.url_template.replace("{}", &encoded)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_google_bang() {
+        let (bang, query) = parse_bang("!g hello world").expect("should parse !g");
+        assert_eq!(bang.prefix, "!g");
+        assert_eq!(bang.name, "Google");
+        assert_eq!(query, "hello world");
+    }
+
+    #[test]
+    fn parse_youtube_bang() {
+        let (bang, query) = parse_bang("!y test video").expect("should parse !y");
+        assert_eq!(bang.prefix, "!y");
+        assert_eq!(query, "test video");
+    }
+
+    #[test]
+    fn parse_bang_with_leading_spaces() {
+        let (bang, query) = parse_bang("  !g query").expect("should parse with leading whitespace");
+        assert_eq!(bang.prefix, "!g");
+        assert_eq!(query, "query");
+    }
+
+    #[test]
+    fn parse_bang_empty_query_returns_none() {
+        assert!(parse_bang("!g").is_none(), "bare !g should return None");
+        assert!(
+            parse_bang("!g  ").is_none(),
+            "!g with only spaces should return None"
+        );
+    }
+
+    #[test]
+    fn parse_bang_unknown_prefix_returns_none() {
+        assert!(parse_bang("!z foo").is_none());
+        assert!(parse_bang("!!bar").is_none());
+    }
+
+    #[test]
+    fn parse_bang_no_bang_returns_none() {
+        assert!(parse_bang("hello world").is_none());
+    }
+
+    #[test]
+    fn search_url_encodes_spaces() {
+        let (bang, _) = parse_bang("!g hello world").unwrap();
+        let url = search_url(bang, "hello world");
+        assert_eq!(url, "https://google.com/search?q=hello%20world");
+    }
+
+    #[test]
+    fn search_url_encodes_special_chars() {
+        let (bang, _) = parse_bang("!g a&b=c").unwrap();
+        let url = search_url(bang, "a&b=c");
+        assert_eq!(url, "https://google.com/search?q=a%26b%3Dc");
+    }
+
+    #[test]
+    fn all_bangs_have_unique_prefixes() {
+        let mut prefixes = std::collections::HashSet::new();
+        for bang in BANGS {
+            assert!(
+                prefixes.insert(bang.prefix),
+                "duplicate prefix: {}",
+                bang.prefix
+            );
+        }
+    }
+
+    #[test]
+    fn all_bangs_produce_valid_urls() {
+        for bang in BANGS {
+            let url = search_url(bang, "test");
+            assert!(
+                url.contains("test"),
+                "bang {} did not insert query into URL",
+                bang.prefix
+            );
+            assert!(
+                url.starts_with("https://"),
+                "bang {} URL does not start with https",
+                bang.prefix
+            );
+        }
+    }
+}

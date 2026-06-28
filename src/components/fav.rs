@@ -1,9 +1,12 @@
 use std::path::PathBuf;
 
 use crate::{
-    types::Item,
+    types::{Item, Kind},
     utils::{asset_path, get_load_path},
 };
+use widestring::u16cstr;
+use windows::Win32::UI::WindowsAndMessaging::{FindWindowW, SW_HIDE, ShowWindow};
+use windows::core::PCWSTR;
 use gpui::*;
 use gpui_component::{
     ActiveTheme, IconName, Sizable,
@@ -93,6 +96,7 @@ impl Render for Fav {
                     };
 
                     let item_clone = item.clone();
+                    let remove_id = item_clone.id.clone();
 
                     div()
                         .id(format!("fav-item-{}", ix))
@@ -109,7 +113,26 @@ impl Render for Fav {
                         .hover(|this| this.bg(cx.theme().secondary_hover))
                         .cursor_pointer()
                         .on_click(cx.listener(move |_this, _, _window, _cx| {
-                            // this.(&item_clone, window);
+                            if item_clone.kind == Kind::Search {
+                                let _ = webbrowser::open(&item_clone.id);
+                            } else if let Some(command) = &item_clone.running_command {
+                                match std::process::Command::new(&command.command)
+                                    .args(&command.args)
+                                    .spawn()
+                                {
+                                    Ok(_) => {}
+                                    Err(e) => {
+                                        eprintln!("Failed to spawn command: {}", e);
+                                    }
+                                }
+                            }
+                            unsafe {
+                                if let Ok(hwnd) =
+                                    FindWindowW(None, PCWSTR(u16cstr!("PopMax").as_ptr()))
+                                {
+                                    let _ = ShowWindow(hwnd, SW_HIDE);
+                                }
+                            }
                         }))
                         .child(icon.size_8())
                         .child(
@@ -121,7 +144,7 @@ impl Render for Fav {
                                     .with_size(gpui_component::Size::XSmall)
                                     .on_click(cx.listener(move |this, _, _, cx| {
                                         cx.stop_propagation();
-                                        this.remove_favorite(&item_clone.id, cx);
+                                        this.remove_favorite(&remove_id, cx);
                                     })),
                             ),
                         )
