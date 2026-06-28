@@ -28,7 +28,10 @@ jobs:
         run: choco install innosetup --no-progress
 
       - name: Build installer
-        run: ISCC.exe installer\PopMax.iss
+        shell: pwsh
+        run: |
+          $version = "$env:GITHUB_REF_NAME" -replace '^v', ''
+          ISCC.exe "/DMyAppVersion=$version" installer\PopMax.iss
 
       - name: Create portable ZIP
         shell: pwsh

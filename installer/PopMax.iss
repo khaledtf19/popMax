@@ -1,5 +1,7 @@
 #define MyAppName "PopMax"
-#define MyAppVersion "0.1.0"
+#ifndef MyAppVersion
+  #define MyAppVersion "0.1.0"
+#endif
 #define MyAppPublisher "Khaled Labeb"
 #define MyAppExeName "PopMax.exe"
 
@@ -9,7 +11,8 @@ AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 
-DefaultDirName={autopf}\{#MyAppName}
+; Per-user install — no admin rights needed, no UAC prompt.
+DefaultDirName={localappdata}\Programs\{#MyAppName}
 DefaultGroupName={#MyAppName}
 
 OutputDir=.
@@ -20,7 +23,7 @@ SolidCompression=yes
 
 WizardStyle=modern
 
-PrivilegesRequired=admin
+PrivilegesRequired=lowest
 
 SetupIconFile="..\assets\PopMaxIcon.ico"
 
@@ -28,6 +31,11 @@ UninstallDisplayIcon={app}\{#MyAppExeName}
 
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
+
+; Code signing (requires a certificate):
+; 1. Set SIGNTOOL_PATH and SIGNTOOL_PARAMS in your env
+; 2. Uncomment the line below
+; SignTool=signtool $p
 
 [Files]
 Source: "..\target\release\PopMax.exe"; DestDir: "{app}"; Flags: ignoreversion

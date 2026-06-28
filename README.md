@@ -37,7 +37,7 @@ Search your Start Menu apps, launch with one keystroke, use bang shortcuts for w
 ### From the installer
 
 1. Download `PopMax-Setup.exe` from the latest release.
-2. Run the installer — it places PopMax in `%LOCALAPPDATA%\Programs\PopMax` and adds a desktop shortcut.
+2. Run the installer — it places PopMax in `%LOCALAPPDATA%\Programs\PopMax` (per-user, no UAC prompt) and adds a desktop shortcut.
 3. Launch PopMax. The tray icon appears in the notification area.
 4. Press `Alt+Space` to open the search window.
 
