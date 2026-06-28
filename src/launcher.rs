@@ -3,7 +3,7 @@ use std::time::Duration;
 use crate::components::list::ToggleFavoriteEvent;
 use crate::components::{fav::Fav, list::LauncherList};
 use crate::scanner::run_scan;
-use crate::types::Item;
+use crate::types::{Item, Kind};
 use gpui::prelude::FluentBuilder;
 use gpui::*;
 use gpui_component::{
@@ -192,11 +192,31 @@ impl LauncherState {
     fn confirm(&mut self, _: &Confirm, _window: &mut Window, cx: &mut Context<Self>) {
         let list = self.list.read(cx);
         let Some(ix) = list.selected_index else {
+            // No item selected — check if the input is a bang shortcut
+            let input = self.input.read(cx).value();
+            if let Some((bang, query)) = crate::bangs::parse_bang(&input) {
+                let url = crate::bangs::search_url(bang, query);
+                let _ = webbrowser::open(&url);
+                unsafe {
+                    let _ = ShowWindow(self.hwnd, SW_HIDE);
+                }
+                self.is_visible = false;
+            }
             return;
         };
         let Some(item) = list.filtered.get(ix) else {
             return;
         };
+
+        if item.kind == Kind::Search {
+            let _ = webbrowser::open(&item.id);
+            unsafe {
+                let _ = ShowWindow(self.hwnd, SW_HIDE);
+            }
+            self.is_visible = false;
+            return;
+        }
+
         if self.launch_item(item) {
             unsafe {
                 let _ = ShowWindow(self.hwnd, SW_HIDE);

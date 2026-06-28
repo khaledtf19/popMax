@@ -21,4 +21,6 @@ pub struct Item {
 pub enum Kind {
     Command,
     App,
+    /// Virtual item for a bang search shortcut (e.g. `!g query`)
+    Search,
 }

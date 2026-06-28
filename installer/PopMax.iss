@@ -22,7 +22,7 @@ WizardStyle=modern
 
 PrivilegesRequired=admin
 
-SetupIconFile=PopMaxIcon.ico
+SetupIconFile="..\assets\PopMaxIcon.ico"
 
 UninstallDisplayIcon={app}\{#MyAppExeName}
 

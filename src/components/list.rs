@@ -1,9 +1,10 @@
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use crate::types::Item;
+use crate::types::{Item, Kind};
 use crate::utils::asset_path;
 use gpui::img;
+use webbrowser;
 use gpui::prelude::FluentBuilder;
 use gpui::*;
 use gpui_component::button::{Button, ButtonVariants};
@@ -53,6 +54,19 @@ impl LauncherList {
                 .cloned()
                 .collect()
         };
+
+        // If the input matches a bang shortcut, show a virtual search item
+        if let Some((bang, bang_query)) = crate::bangs::parse_bang(input) {
+            let url = crate::bangs::search_url(bang, bang_query);
+            let search_item = Item {
+                id: url,
+                name: format!("Search {} for: {}", bang.name, bang_query),
+                kind: Kind::Search,
+                icon_path: None,
+                running_command: None,
+            };
+            self.filtered.insert(0, search_item);
+        }
 
         self.selected_index = None;
         self.item_sizes = Rc::new(
@@ -147,10 +161,13 @@ impl Render for LauncherList {
                                 .cursor_pointer()
                                 .on_click(cx.listener(move |list, _, window, _cx| {
                                     list.selected_index = Some(ix);
-                                    if let Some(command) = list
-                                        .filtered
-                                        .get(ix)
-                                        .and_then(|item| item.running_command.as_ref())
+                                    let Some(item) = list.filtered.get(ix) else {
+                                        return;
+                                    };
+                                    if item.kind == Kind::Search {
+                                        let _ = webbrowser::open(&item.id);
+                                        window.remove_window();
+                                    } else if let Some(command) = item.running_command.as_ref()
                                     {
                                         match std::process::Command::new(&command.command)
                                             .args(&command.args)

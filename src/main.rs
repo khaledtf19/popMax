@@ -16,6 +16,7 @@ use crate::launcher::{
     Cancel, Confirm, FocusSearch, LauncherState, SelectNext, SelectPrev, ToggleFavorite,
 };
 
+mod bangs;
 pub mod components;
 mod hotkey;
 mod launcher;
