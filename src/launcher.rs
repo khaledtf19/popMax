@@ -1,8 +1,9 @@
+use std::sync::Arc;
 use std::time::Duration;
 
 use crate::components::list::ToggleFavoriteEvent;
 use crate::components::{fav::Fav, list::LauncherList};
-use crate::scanner::run_scan;
+use crate::scanner::scan_apps_fast;
 use crate::types::{Item, Kind};
 use gpui::prelude::FluentBuilder;
 use gpui::*;
@@ -51,13 +52,54 @@ impl LauncherState {
 
             input
         });
-        let items = run_scan();
-
         let hwnd = unsafe { FindWindowW(None, PCWSTR(u16cstr!("PopMax").as_ptr())) }
             .expect("Failed to find PopMax window");
         let is_visible = true;
 
+        // Phase 1 — fast: scan app names only, show list immediately with placeholder icons.
+        let scan_entries = Arc::new(scan_apps_fast());
+        let items: Vec<Item> = scan_entries.iter().map(|e| Item {
+            icon_path: None,
+            ..e.item.clone()
+        }).collect();
+
         let list = cx.new(|_cx| LauncherList::new(items));
+
+        // Phase 2 — background: extract all icons in parallel, then batch-update the list.
+        let bg_entries = scan_entries.clone();
+        cx.spawn_in(window, async move |this, cx| {
+            let icons = cx
+                .background_executor()
+                .spawn(async move {
+                    crate::scanner::extract_icons_batch(&bg_entries)
+                })
+                .await;
+            this.update_in(cx, |this, _window, cx| {
+                this.list.update(cx, |list, cx| {
+                    list.apply_icons(&icons);
+                    cx.notify();
+                });
+
+                let fresh_items: Vec<Item> = this.list.read(cx).items.clone();
+                this.fav.update(cx, |fav, cx| {
+                    let mut changed = false;
+                    for f in &mut fav.favorites {
+                        if let Some(matched) = fresh_items.iter().find(|i| i.id == f.id) {
+                            if f.icon_path != matched.icon_path {
+                                f.icon_path = matched.icon_path.clone();
+                                changed = true;
+                            }
+                        }
+                    }
+                    if changed {
+                        fav.save_favorites_to_disk();
+                        cx.notify();
+                    }
+                });
+            })
+            .ok();
+        })
+        .detach();
 
         cx.subscribe_in::<_, InputEvent>(&input, window, |view, state, _event, _window, cx| {
             let input = state.read(cx).value();

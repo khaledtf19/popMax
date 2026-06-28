@@ -121,6 +121,20 @@ impl LauncherList {
                 .scroll_to_item(ix, ScrollStrategy::Center);
         }
     }
+
+    /// Batch-update icon paths after background icon extraction completes.
+    /// Both `items` (master list) and `filtered` (current view) are updated
+    /// so icons appear immediately and persist through search re-filtering.
+    pub fn apply_icons(&mut self, icons: &[(String, Option<PathBuf>)]) {
+        for (id, icon_path) in icons {
+            if let Some(item) = self.items.iter_mut().find(|i| i.id == *id) {
+                item.icon_path = icon_path.clone();
+            }
+            if let Some(item) = self.filtered.iter_mut().find(|i| i.id == *id) {
+                item.icon_path = icon_path.clone();
+            }
+        }
+    }
 }
 
 impl Render for LauncherList {
