@@ -1,0 +1,66 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build release
+        run: cargo build --release
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress
+
+      - name: Build installer
+        run: ISCC.exe installer\PopMax.iss
+
+      - name: Create portable ZIP
+        shell: pwsh
+        run: |
+          $tag = "$env:GITHUB_REF_NAME"
+          $zip = "PopMax-${tag}-portable.zip"
+          Compress-Archive -Path target/release/PopMax.exe, assets/PopMaxIcon.ico -DestinationPath $zip -CompressionLevel Optimal
+          Write-Output "Created $zip"
+
+      - name: Generate SHA256 hashes
+        shell: pwsh
+        run: |
+          $tag = "$env:GITHUB_REF_NAME"
+
+          $installer = "installer/PopMax-Setup.exe"
+          $portable   = "PopMax-${tag}-portable.zip"
+
+          $h1 = (Get-FileHash -Algorithm SHA256 $installer).Hash
+          $h2 = (Get-FileHash -Algorithm SHA256 $portable).Hash
+
+          "# SHA-256               Filename" | Out-File -Encoding utf8 SHA256SUMS.txt
+          "${h1}  PopMax-Setup.exe"          | Out-File -Encoding utf8 -Append SHA256SUMS.txt
+          "${h2}  PopMax-${tag}-portable.zip" | Out-File -Encoding utf8 -Append SHA256SUMS.txt
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: PopMax ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            installer/PopMax-Setup.exe
+            PopMax-*.zip
+            SHA256SUMS.txt
