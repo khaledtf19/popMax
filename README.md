@@ -1,6 +1,6 @@
 # PopMax
 
-A fast, keyboard-driven Windows application launcher built with Rust and [GPUI](https://github.com/zed-industries/zed).
+A fast, keyboard-driven Windows application launcher built with Rust and [GPUI](https://github.com/zed-industries/zed) and [GPUI Component](https://github.com/longbridge/gpui-component).
 
 Search your Start Menu apps, launch with one keystroke, use bang shortcuts for web searches, and pin favorites — all from a sleek popup window.
 
