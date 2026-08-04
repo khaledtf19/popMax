@@ -17,6 +17,7 @@ use crate::launcher::{
 };
 
 mod bangs;
+mod autostart;
 pub mod components;
 mod hotkey;
 mod launcher;
@@ -36,6 +37,7 @@ fn main() {
     };
 
     let hotkey_rx = hotkey::start();
+    autostart::apply_startup_setting();
     tray::start();
 
     let app = gpui_platform::application().with_assets(gpui_component_assets::Assets);
