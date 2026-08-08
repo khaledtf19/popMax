@@ -13,10 +13,11 @@ use windows::{
                 AppendMenuW, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DestroyMenu,
                 DispatchMessageW, GetCursorPos, GetMessageW, HICON, HMENU, HWND_NOTOPMOST,
                 HWND_TOPMOST, IDI_APPLICATION, IMAGE_ICON, LR_DEFAULTSIZE, LR_LOADFROMFILE,
-                LoadIconW, LoadImageW, MF_STRING, MSG, PostMessageW, RegisterClassW, SWP_NOMOVE,
-                SWP_NOSIZE, SetForegroundWindow, SetWindowPos, TPM_LEFTBUTTON, TPM_RETURNCMD,
-                TrackPopupMenu, TranslateMessage, WINDOW_EX_STYLE, WINDOW_STYLE, WM_APP,
-                WM_CONTEXTMENU, WM_DESTROY, WM_NULL, WM_RBUTTONDOWN, WM_RBUTTONUP, WNDCLASSW,
+                LoadIconW, LoadImageW, MF_CHECKED, MF_STRING, MSG, PostMessageW, RegisterClassW,
+                SWP_NOMOVE, SWP_NOSIZE, SetForegroundWindow, SetWindowPos, TPM_LEFTBUTTON,
+                TPM_RETURNCMD, TrackPopupMenu, TranslateMessage, WINDOW_EX_STYLE, WINDOW_STYLE,
+                WM_APP, WM_CONTEXTMENU, WM_DESTROY, WM_NULL, WM_RBUTTONDOWN, WM_RBUTTONUP,
+                WNDCLASSW,
             },
         },
     },
@@ -26,6 +27,7 @@ use windows::{
 const TRAY_ID: u32 = 1;
 const TRAY_CALLBACK: u32 = WM_APP + 1;
 const EXIT_MENU_ID: usize = 1001;
+const STARTUP_MENU_ID: usize = 1002;
 
 pub fn start() {
     thread::spawn(|| {
@@ -182,6 +184,21 @@ unsafe fn show_context_menu(hwnd: HWND) {
     };
 
     let exit_label = u16cstr!("Exit");
+    let startup_label = u16cstr!("Start with Windows");
+
+    let startup_flags = if crate::autostart::is_enabled() {
+        MF_STRING | MF_CHECKED
+    } else {
+        MF_STRING
+    };
+    let _ = unsafe {
+        AppendMenuW(
+            menu,
+            startup_flags,
+            STARTUP_MENU_ID,
+            PCWSTR(startup_label.as_ptr()),
+        )
+    };
     let _ = unsafe { AppendMenuW(menu, MF_STRING, EXIT_MENU_ID, PCWSTR(exit_label.as_ptr())) };
 
     let mut cursor = POINT::default();
@@ -227,7 +244,9 @@ unsafe fn show_context_menu(hwnd: HWND) {
         let _ = DestroyMenu(menu);
     }
 
-    if command.0 as usize == EXIT_MENU_ID {
+    if command.0 as usize == STARTUP_MENU_ID {
+        let _ = crate::autostart::toggle_startup();
+    } else if command.0 as usize == EXIT_MENU_ID {
         unsafe {
             delete_tray_icon(hwnd);
         }
