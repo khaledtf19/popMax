@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use crate::components::list::ToggleFavoriteEvent;
@@ -43,7 +43,7 @@ impl LauncherState {
     pub fn new(
         window: &mut Window,
         cx: &mut Context<Self>,
-        hotkey_rx: crossbeam_channel::Receiver<crate::hotkey::HotkeyEvent>,
+        hotkey_rx: &Arc<Mutex<crossbeam_channel::Receiver<crate::hotkey::HotkeyEvent>>>,
     ) -> Self {
         let input = cx.new(|cx| {
             let input = InputState::new(window, cx).placeholder("Search...");
@@ -58,10 +58,13 @@ impl LauncherState {
 
         // Phase 1 — fast: scan app names only, show list immediately with placeholder icons.
         let scan_entries = Arc::new(scan_apps_fast());
-        let items: Vec<Item> = scan_entries.iter().map(|e| Item {
-            icon_path: None,
-            ..e.item.clone()
-        }).collect();
+        let items: Vec<Item> = scan_entries
+            .iter()
+            .map(|e| Item {
+                icon_path: None,
+                ..e.item.clone()
+            })
+            .collect();
 
         let list = cx.new(|_cx| LauncherList::new(items));
 
@@ -70,9 +73,7 @@ impl LauncherState {
         cx.spawn_in(window, async move |this, cx| {
             let icons = cx
                 .background_executor()
-                .spawn(async move {
-                    crate::scanner::extract_icons_batch(&bg_entries)
-                })
+                .spawn(async move { crate::scanner::extract_icons_batch(&bg_entries) })
                 .await;
             this.update_in(cx, |this, _window, cx| {
                 this.list.update(cx, |list, cx| {
@@ -158,9 +159,11 @@ impl LauncherState {
         )
         .detach();
 
+        let rx_clone = Arc::clone(&hotkey_rx);
+
         cx.spawn_in(window, async move |this, cx: &mut AsyncWindowContext| {
             loop {
-                while let Ok(_event) = hotkey_rx.try_recv() {
+                while let Ok(_event) = rx_clone.lock().unwrap().try_recv() {
                     this.update_in(cx, |this, window, cx| {
                         if this.is_visible {
                             unsafe {

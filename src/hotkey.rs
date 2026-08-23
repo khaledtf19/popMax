@@ -17,7 +17,7 @@ pub enum HotkeyEvent {
 pub fn start() -> Receiver<HotkeyEvent> {
     let (tx, rx) = unbounded();
 
-    thread::spawn(move || unsafe {
+    let h = thread::spawn(move || unsafe {
         RegisterHotKey(HWND::default(), 1, MOD_ALT, VK_SPACE.0 as u32)
             .expect("Failed to register hotkey");
 
@@ -28,7 +28,6 @@ pub fn start() -> Receiver<HotkeyEvent> {
                 let _ = tx.send(HotkeyEvent::ToggleLauncher);
             }
 
-            let _ = TranslateMessage(&msg);
             DispatchMessageW(&msg);
         }
 
