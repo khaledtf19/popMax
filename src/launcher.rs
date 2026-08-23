@@ -43,7 +43,7 @@ impl LauncherState {
     pub fn new(
         window: &mut Window,
         cx: &mut Context<Self>,
-        hotkey_rx: &Arc<Mutex<crossbeam_channel::Receiver<crate::hotkey::HotkeyEvent>>>,
+        hotkey_rx: crossbeam_channel::Receiver<crate::hotkey::HotkeyEvent>,
     ) -> Self {
         let input = cx.new(|cx| {
             let input = InputState::new(window, cx).placeholder("Search...");
@@ -159,11 +159,9 @@ impl LauncherState {
         )
         .detach();
 
-        let rx_clone = Arc::clone(&hotkey_rx);
-
         cx.spawn_in(window, async move |this, cx: &mut AsyncWindowContext| {
             loop {
-                while let Ok(_event) = rx_clone.lock().unwrap().try_recv() {
+                while let Ok(_event) = hotkey_rx.try_recv() {
                     this.update_in(cx, |this, window, cx| {
                         if this.is_visible {
                             unsafe {

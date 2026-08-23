@@ -38,8 +38,7 @@ fn main() {
         return;
     };
 
-    let hotkey_rx = hotkey::start();
-    let hotkey_rx_shared = Arc::new(Mutex::new(hotkey_rx));
+    let (hotkey_thread, hotkey_rx) = hotkey::start();
     autostart::apply_startup_setting();
     tray::start();
 
@@ -86,13 +85,14 @@ fn main() {
                 tabbing_identifier: None,
             },
             |window, cx| {
-                let view = cx.new(|cx| LauncherState::new(window, cx, &hotkey_rx_shared));
+                let view = cx.new(|cx| LauncherState::new(window, cx, hotkey_rx));
 
                 cx.new(|cx| Root::new(view, window, cx))
             },
         )
         .expect("Failed to open window");
     });
+    hotkey_thread.join().ok();
 }
 
 struct SingleInstance(HANDLE);
