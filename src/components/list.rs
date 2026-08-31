@@ -1,18 +1,20 @@
 use std::path::PathBuf;
 use std::rc::Rc;
+use std::sync::Arc;
 
+use crate::components::search::SearchEngine;
 use crate::types::{Item, Kind};
 use crate::utils::asset_path;
 use gpui::img;
-use webbrowser;
-use widestring::u16cstr;
-use windows::Win32::UI::WindowsAndMessaging::{FindWindowW, SW_HIDE, ShowWindow};
-use windows::core::PCWSTR;
 use gpui::prelude::FluentBuilder;
 use gpui::*;
 use gpui_component::button::{Button, ButtonVariants};
 use gpui_component::label::Label;
 use gpui_component::{ActiveTheme, IconName, VirtualListScrollHandle, h_flex, v_virtual_list};
+use webbrowser;
+use widestring::u16cstr;
+use windows::Win32::UI::WindowsAndMessaging::{FindWindowW, SW_HIDE, ShowWindow};
+use windows::core::PCWSTR;
 
 pub struct ToggleFavoriteEvent(pub usize);
 
@@ -23,6 +25,7 @@ pub struct LauncherList {
     item_sizes: Rc<Vec<Size<Pixels>>>,
     scroll_handle: VirtualListScrollHandle,
     pub favorite_ids: Vec<String>,
+    pub search: SearchEngine,
 }
 
 impl EventEmitter<ToggleFavoriteEvent> for LauncherList {}
@@ -31,6 +34,8 @@ impl LauncherList {
     pub fn new(items: Vec<Item>) -> Self {
         let filtered = items.clone();
         let item_sizes = Rc::new(items.iter().map(|_| size(px(200.), px(56.))).collect());
+        let mut search = SearchEngine::new();
+        search.add(items.clone());
         Self {
             items,
             filtered,
@@ -38,6 +43,7 @@ impl LauncherList {
             selected_index: None,
             scroll_handle: VirtualListScrollHandle::new(),
             favorite_ids: Vec::new(),
+            search,
         }
     }
 
@@ -46,32 +52,44 @@ impl LauncherList {
     }
 
     pub fn update_filtered(&mut self, input: &str, cx: &mut Context<Self>) {
-        let query = input.trim().to_lowercase();
-
-        self.filtered = if query.is_empty() {
-            self.items.clone()
-        } else {
-            self.items
-                .iter()
-                .filter(|item| item.name.to_lowercase().contains(&query))
-                .cloned()
-                .collect()
-        };
-
-        // If the input matches a bang shortcut, show a virtual search item
         if let Some((bang, bang_query)) = crate::bangs::parse_bang(input) {
             let url = crate::bangs::search_url(bang, bang_query);
-            let search_item = Item {
+            self.filtered = vec![Item {
                 id: url,
                 name: format!("Search {} for: {}", bang.name, bang_query),
                 kind: Kind::Search,
                 icon_path: None,
                 running_command: None,
-            };
-            self.filtered.insert(0, search_item);
+            }];
+            self.selected_index = Some(0);
+            self.item_sizes = Rc::new(vec![size(px(200.), px(56.))]);
+            cx.notify();
+            return;
         }
 
-        self.selected_index = None;
+        self.search.search(input);
+
+        self.filtered = if input.trim().is_empty() {
+            self.items.clone()
+        } else {
+            self.search
+                .results()
+                .into_iter()
+                .map(|mut item| {
+                    if let Some(src) = self.items.iter().find(|i| i.id == item.id) {
+                        item.icon_path = src.icon_path.clone();
+                    }
+                    item
+                })
+                .collect()
+        };
+
+        self.selected_index = if self.filtered.is_empty() {
+            None
+        } else {
+            Some(0)
+        };
+
         self.item_sizes = Rc::new(
             self.filtered
                 .iter()
@@ -191,22 +209,19 @@ impl Render for LauncherList {
                                                 let _ = ShowWindow(hwnd, SW_HIDE);
                                             }
                                         }
-                                    } else if let Some(command) = item.running_command.as_ref()
-                                    {
+                                    } else if let Some(command) = item.running_command.as_ref() {
                                         match std::process::Command::new(&command.command)
                                             .args(&command.args)
                                             .spawn()
                                         {
-                                            Ok(_) => {
-                                                unsafe {
-                                                    if let Ok(hwnd) = FindWindowW(
-                                                        None,
-                                                        PCWSTR(u16cstr!("PopMax").as_ptr()),
-                                                    ) {
-                                                        let _ = ShowWindow(hwnd, SW_HIDE);
-                                                    }
+                                            Ok(_) => unsafe {
+                                                if let Ok(hwnd) = FindWindowW(
+                                                    None,
+                                                    PCWSTR(u16cstr!("PopMax").as_ptr()),
+                                                ) {
+                                                    let _ = ShowWindow(hwnd, SW_HIDE);
                                                 }
-                                            }
+                                            },
                                             Err(e) => {
                                                 eprintln!("Failed to spawn command: {}", e);
                                             }
