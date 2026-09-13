@@ -1,5 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use std::sync::{Arc, Mutex};
+
 use gpui::*;
 use gpui_component::Root;
 use widestring::u16cstr;
@@ -16,8 +18,8 @@ use crate::launcher::{
     Cancel, Confirm, FocusSearch, LauncherState, SelectNext, SelectPrev, ToggleFavorite,
 };
 
-mod bangs;
 mod autostart;
+mod bangs;
 pub mod components;
 mod hotkey;
 mod launcher;
@@ -36,7 +38,7 @@ fn main() {
         return;
     };
 
-    let hotkey_rx = hotkey::start();
+    let (hotkey_thread, hotkey_rx) = hotkey::start();
     autostart::apply_startup_setting();
     tray::start();
 
@@ -83,13 +85,14 @@ fn main() {
                 tabbing_identifier: None,
             },
             |window, cx| {
-                let view = cx.new(|cx| LauncherState::new(window, cx, hotkey_rx.clone()));
+                let view = cx.new(|cx| LauncherState::new(window, cx, hotkey_rx));
 
                 cx.new(|cx| Root::new(view, window, cx))
             },
         )
         .expect("Failed to open window");
     });
+    hotkey_thread.join().ok();
 }
 
 struct SingleInstance(HANDLE);

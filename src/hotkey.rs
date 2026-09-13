@@ -13,27 +13,29 @@ use windows::Win32::{
 pub enum HotkeyEvent {
     ToggleLauncher,
 }
+const HOTKEY_ID: i32 = 1;
 
-pub fn start() -> Receiver<HotkeyEvent> {
+pub fn start() -> (thread::JoinHandle<()>, Receiver<HotkeyEvent>) {
     let (tx, rx) = unbounded();
 
-    thread::spawn(move || unsafe {
-        RegisterHotKey(HWND::default(), 1, MOD_ALT, VK_SPACE.0 as u32)
+    let h = thread::spawn(move || unsafe {
+        RegisterHotKey(HWND::default(), HOTKEY_ID, MOD_ALT, VK_SPACE.0 as u32)
             .expect("Failed to register hotkey");
 
         let mut msg = MSG::default();
 
         while GetMessageW(&mut msg, HWND::default(), 0, 0).into() {
             if msg.message == WM_HOTKEY {
-                let _ = tx.send(HotkeyEvent::ToggleLauncher);
+                if tx.send(HotkeyEvent::ToggleLauncher).is_err() {
+                    break;
+                }
             }
 
-            let _ = TranslateMessage(&msg);
             DispatchMessageW(&msg);
         }
 
         let _ = UnregisterHotKey(HWND::default(), 1);
     });
 
-    rx
+    (h, rx)
 }
