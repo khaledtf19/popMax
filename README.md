@@ -4,8 +4,6 @@ A fast, keyboard-driven Windows application launcher built with Rust and [GPUI](
 
 Search your Start Menu apps, launch with one keystroke, use bang shortcuts for web searches, and pin favorites — all from a sleek popup window.
 
-![screenshot](https://placehold.co/600x500/1a1b26/c0caf5?text=PopMax)
-
 ## Features
 
 - **App launcher** — scans Start Menu `.lnk` files and presents them in a searchable, virtualized list
