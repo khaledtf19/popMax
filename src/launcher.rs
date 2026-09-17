@@ -129,37 +129,8 @@ impl LauncherState {
         .detach();
 
         // Subscribe to ToggleFavoriteEvent and update favorite status accordingly
-        cx.subscribe_in::<LauncherList, ToggleFavoriteEvent>(
-            &list,
-            window,
-            |view, _, event, _window, cx| {
-                let ix = event.0;
-                let Some(item) = view.get_item(ix, cx) else {
-                    return;
-                };
-
-                let is_fav = view.fav.read(cx).is_favorite(&item.id);
-                if is_fav {
-                    view.fav
-                        .update(cx, |fav, cx| fav.remove_favorite(&item.id, cx));
-                } else {
-                    view.fav.update(cx, |fav, cx| fav.add_favorite(item, cx));
-                }
-
-                let ids: Vec<String> = view
-                    .fav
-                    .read(cx)
-                    .favorites
-                    .iter()
-                    .map(|f| f.id.clone())
-                    .collect();
-                view.list.update(cx, |list, cx| {
-                    list.favorite_ids = ids;
-                    cx.notify();
-                })
-            },
-        )
-        .detach();
+        cx.subscribe_in::<LauncherList, ToggleFavoriteEvent>(&list, window, toggle_fav)
+            .detach();
 
         handle_hotkey(window, cx, hotkey_rx);
 
@@ -208,7 +179,7 @@ impl LauncherState {
         }
     }
 
-    fn confirm(&mut self, _: &Confirm, _window: &mut Window, cx: &mut Context<Self>) {
+    fn confirm(&mut self, _: &Confirm, window: &mut Window, cx: &mut Context<Self>) {
         let list = self.list.read(cx);
         let Some(ix) = list.selected_index else {
             // No item selected — check if the input is a bang shortcut
@@ -216,10 +187,7 @@ impl LauncherState {
             if let Some((bang, query)) = crate::bangs::parse_bang(&input) {
                 let url = crate::bangs::search_url(bang, query);
                 let _ = webbrowser::open(&url);
-                unsafe {
-                    let _ = ShowWindow(self.hwnd, SW_HIDE);
-                }
-                self.is_visible = false;
+                hide_app(self, window, cx);
             }
             return;
         };
@@ -229,26 +197,17 @@ impl LauncherState {
 
         if item.kind == Kind::Search {
             let _ = webbrowser::open(&item.id);
-            unsafe {
-                let _ = ShowWindow(self.hwnd, SW_HIDE);
-            }
-            self.is_visible = false;
+            hide_app(self, window, cx);
             return;
         }
 
         if self.launch_item(item) {
-            unsafe {
-                let _ = ShowWindow(self.hwnd, SW_HIDE);
-            }
-            self.is_visible = false;
+            hide_app(self, window, cx);
         }
     }
 
-    fn cancel(&mut self, _: &Cancel, _window: &mut Window, _cx: &mut Context<Self>) {
-        unsafe {
-            let _ = ShowWindow(self.hwnd, SW_HIDE);
-        }
-        self.is_visible = false;
+    fn cancel(&mut self, _: &Cancel, window: &mut Window, cx: &mut Context<Self>) {
+        hide_app(self, window, cx);
     }
 
     fn toggle_favorite(
@@ -311,10 +270,7 @@ fn handle_hotkey(
             while let Ok(_event) = hotkey_rx.try_recv() {
                 this.update_in(cx, |this, window, cx| {
                     if this.is_visible {
-                        unsafe {
-                            let _ = ShowWindow(this.hwnd, SW_HIDE);
-                        }
-                        this.is_visible = false;
+                        hide_app(this, window, cx);
                     } else {
                         unsafe {
                             let _ = ShowWindow(this.hwnd, SW_SHOW);
@@ -343,15 +299,59 @@ fn handle_focuse_loss(
     input: &Entity<InputState>,
 ) {
     let input_handle = input.focus_handle(cx);
-    cx.on_focus_out(&input_handle, window, |this, _event, _window, _cx| {
-        unsafe {
-            let _ = ShowWindow(this.hwnd, SW_HIDE);
-        }
-        this.is_visible = false;
+    cx.on_focus_out(&input_handle, window, |this, _event, window, cx| {
+        hide_app(this, window, cx);
     })
     .detach();
 }
 
+fn hide_app(this: &mut LauncherState, window: &mut Window, cx: &mut Context<'_, LauncherState>) {
+    unsafe {
+        let _ = ShowWindow(this.hwnd, SW_HIDE);
+    }
+    this.is_visible = false;
+    this.input.update(cx, |input, cx| {
+        input.set_value("", window, cx);
+    });
+    this.list.update(cx, |list, cx| {
+        list.update_filtered("", cx);
+    });
+
+    cx.notify();
+}
+
+fn toggle_fav(
+    view: &mut LauncherState,
+    _: &Entity<LauncherList>,
+    event: &ToggleFavoriteEvent,
+    _window: &mut Window,
+    cx: &mut Context<'_, LauncherState>,
+) {
+    let ix = event.0;
+    let Some(item) = view.get_item(ix, cx) else {
+        return;
+    };
+
+    let is_fav = view.fav.read(cx).is_favorite(&item.id);
+    if is_fav {
+        view.fav
+            .update(cx, |fav, cx| fav.remove_favorite(&item.id, cx));
+    } else {
+        view.fav.update(cx, |fav, cx| fav.add_favorite(item, cx));
+    }
+
+    let ids: Vec<String> = view
+        .fav
+        .read(cx)
+        .favorites
+        .iter()
+        .map(|f| f.id.clone())
+        .collect();
+    view.list.update(cx, |list, cx| {
+        list.favorite_ids = ids;
+        cx.notify();
+    })
+}
 impl Render for LauncherState {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let has_favorites = !self.fav.read(cx).favorites.is_empty();
@@ -363,7 +363,7 @@ impl Render for LauncherState {
             .on_action(cx.listener(Self::cancel))
             .on_action(cx.listener(Self::toggle_favorite))
             .on_action(cx.listener(Self::focus_search))
-            .on_key_down(cx.listener(|this, e: &KeyDownEvent, _window, cx| {
+            .on_key_down(cx.listener(|this, e: &KeyDownEvent, window, cx| {
                 if e.keystroke.modifiers.control {
                     if let Some(digit) = e.keystroke.key.chars().next().and_then(|c| c.to_digit(10))
                     {
@@ -372,10 +372,7 @@ impl Render for LauncherState {
                             let item = this.fav.read(cx).favorites.get(ix).cloned();
                             if let Some(item) = item {
                                 if this.launch_item(&item) {
-                                    unsafe {
-                                        let _ = ShowWindow(this.hwnd, SW_HIDE);
-                                    }
-                                    this.is_visible = false;
+                                    hide_app(this, window, cx);
                                 }
                             }
                         }
