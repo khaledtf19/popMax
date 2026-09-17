@@ -1,8 +1,9 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::Duration;
 
 use crate::components::list::ToggleFavoriteEvent;
 use crate::components::{fav::Fav, list::LauncherList};
+use crate::consts;
 use crate::scanner::scan_apps_fast;
 use crate::types::{Item, Kind};
 use gpui::prelude::FluentBuilder;
@@ -52,7 +53,8 @@ impl LauncherState {
 
             input
         });
-        let hwnd = unsafe { FindWindowW(None, PCWSTR(u16cstr!("PopMax").as_ptr())) }
+
+        let hwnd = unsafe { FindWindowW(None, PCWSTR(u16cstr!(consts::APP_NAME).as_ptr())) }
             .expect("Failed to find PopMax window");
         let is_visible = true;
 
@@ -159,35 +161,9 @@ impl LauncherState {
         )
         .detach();
 
-        cx.spawn_in(window, async move |this, cx: &mut AsyncWindowContext| {
-            loop {
-                while let Ok(_event) = hotkey_rx.try_recv() {
-                    this.update_in(cx, |this, window, cx| {
-                        if this.is_visible {
-                            unsafe {
-                                let _ = ShowWindow(this.hwnd, SW_HIDE);
-                            }
-                            this.is_visible = false;
-                        } else {
-                            unsafe {
-                                let _ = ShowWindow(this.hwnd, SW_SHOW);
-                                let _ = SetForegroundWindow(this.hwnd);
-                            }
-                            window.activate_window();
-                            this.is_visible = true;
-                            this.input.update(cx, |input, cx| {
-                                input.focus(window, cx);
-                            });
-                        }
-                    })
-                    .ok();
-                }
-                cx.background_executor()
-                    .timer(Duration::from_millis(16))
-                    .await;
-            }
-        })
-        .detach();
+        handle_hotkey(window, cx, hotkey_rx);
+
+        handle_focuse_loss(window, cx, &input);
 
         Self {
             input,
@@ -323,6 +299,57 @@ impl LauncherState {
             input.focus(window, cx);
         });
     }
+}
+
+fn handle_hotkey(
+    window: &mut Window,
+    cx: &mut Context<'_, LauncherState>,
+    hotkey_rx: crossbeam_channel::Receiver<crate::hotkey::HotkeyEvent>,
+) {
+    cx.spawn_in(window, async move |this, cx: &mut AsyncWindowContext| {
+        loop {
+            while let Ok(_event) = hotkey_rx.try_recv() {
+                this.update_in(cx, |this, window, cx| {
+                    if this.is_visible {
+                        unsafe {
+                            let _ = ShowWindow(this.hwnd, SW_HIDE);
+                        }
+                        this.is_visible = false;
+                    } else {
+                        unsafe {
+                            let _ = ShowWindow(this.hwnd, SW_SHOW);
+                            let _ = SetForegroundWindow(this.hwnd);
+                        }
+                        window.activate_window();
+                        this.is_visible = true;
+                        this.input.update(cx, |input, cx| {
+                            input.focus(window, cx);
+                        });
+                    }
+                })
+                .ok();
+            }
+            cx.background_executor()
+                .timer(Duration::from_millis(16))
+                .await;
+        }
+    })
+    .detach();
+}
+
+fn handle_focuse_loss(
+    window: &mut Window,
+    cx: &mut Context<'_, LauncherState>,
+    input: &Entity<InputState>,
+) {
+    let input_handle = input.focus_handle(cx);
+    cx.on_focus_out(&input_handle, window, |this, _event, _window, _cx| {
+        unsafe {
+            let _ = ShowWindow(this.hwnd, SW_HIDE);
+        }
+        this.is_visible = false;
+    })
+    .detach();
 }
 
 impl Render for LauncherState {
