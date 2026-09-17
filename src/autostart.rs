@@ -1,12 +1,14 @@
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
-use winreg::enums::*;
 use winreg::RegKey;
+use winreg::enums::*;
+
+use crate::consts;
 
 /// Per-user "Run" key — apps listed here start when the user logs in.
 const RUN_KEY_PATH: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
-const VALUE_NAME: &str = "PopMax";
+const VALUE_NAME: &str = consts::APP_NAME;
 
 /// Persisted app preferences (`%LOCALAPPDATA%\PopMax\settings.json`).
 #[derive(Debug, Clone, Serialize, Deserialize)]

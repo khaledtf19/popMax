@@ -1,12 +1,10 @@
 use std::path::PathBuf;
 
 use crate::{
+    consts,
     types::{Item, Kind},
     utils::{asset_path, get_load_path},
 };
-use widestring::u16cstr;
-use windows::Win32::UI::WindowsAndMessaging::{FindWindowW, SW_HIDE, ShowWindow};
-use windows::core::PCWSTR;
 use gpui::*;
 use gpui_component::{
     ActiveTheme, IconName, Sizable,
@@ -15,6 +13,9 @@ use gpui_component::{
     kbd::Kbd,
     label::Label,
 };
+use widestring::u16cstr;
+use windows::Win32::UI::WindowsAndMessaging::{FindWindowW, SW_HIDE, ShowWindow};
+use windows::core::PCWSTR;
 
 pub struct Fav {
     pub favorites: Vec<Item>,
@@ -128,7 +129,7 @@ impl Render for Fav {
                             }
                             unsafe {
                                 if let Ok(hwnd) =
-                                    FindWindowW(None, PCWSTR(u16cstr!("PopMax").as_ptr()))
+                                    FindWindowW(None, PCWSTR(u16cstr!(consts::APP_NAME).as_ptr()))
                                 {
                                     let _ = ShowWindow(hwnd, SW_HIDE);
                                 }

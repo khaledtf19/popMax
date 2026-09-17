@@ -3,6 +3,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use crate::components::search::SearchEngine;
+use crate::consts;
 use crate::types::{Item, Kind};
 use crate::utils::asset_path;
 use gpui::img;
@@ -204,7 +205,7 @@ impl Render for LauncherList {
                                         unsafe {
                                             if let Ok(hwnd) = FindWindowW(
                                                 None,
-                                                PCWSTR(u16cstr!("PopMax").as_ptr()),
+                                                PCWSTR(u16cstr!(consts::APP_NAME).as_ptr()),
                                             ) {
                                                 let _ = ShowWindow(hwnd, SW_HIDE);
                                             }
@@ -217,7 +218,7 @@ impl Render for LauncherList {
                                             Ok(_) => unsafe {
                                                 if let Ok(hwnd) = FindWindowW(
                                                     None,
-                                                    PCWSTR(u16cstr!("PopMax").as_ptr()),
+                                                    PCWSTR(u16cstr!(consts::APP_NAME).as_ptr()),
                                                 ) {
                                                     let _ = ShowWindow(hwnd, SW_HIDE);
                                                 }

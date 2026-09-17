@@ -4,3 +4,4 @@ installer/output/
 installer/dist/
 *.exe
 *.msi
+/.sisyphus

@@ -1,7 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::sync::{Arc, Mutex};
-
 use gpui::*;
 use gpui_component::Root;
 use widestring::u16cstr;
@@ -21,6 +19,7 @@ use crate::launcher::{
 mod autostart;
 mod bangs;
 pub mod components;
+pub mod consts;
 mod hotkey;
 mod launcher;
 mod load_themes;
@@ -30,7 +29,7 @@ pub mod types;
 pub mod utils;
 pub mod windows_icons;
 
-const APP_TITLE: &str = "PopMax";
+const APP_TITLE: &str = consts::APP_NAME;
 
 fn main() {
     let Some(_single_instance) = acquire_single_instance() else {
@@ -126,7 +125,7 @@ fn acquire_single_instance() -> Option<SingleInstance> {
 }
 
 fn show_existing_instance() {
-    let hwnd = unsafe { FindWindowW(None, PCWSTR(u16cstr!("PopMax").as_ptr())) };
+    let hwnd = unsafe { FindWindowW(None, PCWSTR(u16cstr!(APP_TITLE).as_ptr())) };
     if let Ok(hwnd) = hwnd {
         unsafe {
             let _ = ShowWindow(hwnd, SW_SHOW);
