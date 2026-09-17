@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 use std::rc::Rc;
-use std::sync::Arc;
 
 use crate::components::search::SearchEngine;
 use crate::consts;
