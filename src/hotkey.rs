@@ -5,7 +5,7 @@ use windows::Win32::{
     Foundation::HWND,
     UI::{
         Input::KeyboardAndMouse::{MOD_ALT, RegisterHotKey, UnregisterHotKey, VK_SPACE},
-        WindowsAndMessaging::{DispatchMessageW, GetMessageW, MSG, TranslateMessage, WM_HOTKEY},
+        WindowsAndMessaging::{DispatchMessageW, GetMessageW, MSG, WM_HOTKEY},
     },
 };
 

@@ -8,7 +8,7 @@ use nucleo::{
 use crate::types::Item;
 
 pub struct SearchEngine {
-    nucleo: Nucleo<Item>,
+    nucleo: Nucleo<(usize, String)>,
 }
 
 impl SearchEngine {
@@ -18,11 +18,11 @@ impl SearchEngine {
         }
     }
 
-    pub fn add(&mut self, items: Vec<Item>) {
+    pub fn add(&mut self, items: &[Item]) {
         let injector = self.nucleo.injector();
-        for item in items {
-            injector.push(item, |item, columns| {
-                columns[0] = item.name.clone().into();
+        for (i, item) in items.iter().enumerate() {
+            injector.push((i, item.name.clone()), |(_, name), columns| {
+                columns[0] = name.clone().into();
             });
         }
     }
@@ -40,11 +40,11 @@ impl SearchEngine {
         }
     }
 
-    pub fn results(&self) -> Vec<Item> {
+    pub fn results(&self) -> Vec<usize> {
         self.nucleo
             .snapshot()
             .matched_items(0..)
-            .map(|item| item.data.clone())
+            .map(|item| item.data.0)
             .collect::<Vec<_>>()
     }
 }

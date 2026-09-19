@@ -146,7 +146,7 @@ impl LauncherState {
     }
 
     fn get_item(&self, ix: usize, cx: &Context<Self>) -> Option<Item> {
-        self.list.read(cx).filtered.get(ix).cloned()
+        self.list.read(cx).items.get(ix).cloned()
     }
 
     fn select_next(&mut self, _: &SelectNext, _window: &mut Window, cx: &mut Context<Self>) {
@@ -191,7 +191,7 @@ impl LauncherState {
             }
             return;
         };
-        let Some(item) = list.filtered.get(ix) else {
+        let Some(item) = list.visible_item(ix) else {
             return;
         };
 
@@ -220,7 +220,10 @@ impl LauncherState {
             return;
         };
 
-        let Some(item) = self.list.read(cx).filtered.get(selected_index) else {
+        let Some(item) = self.list.read(cx).visible_item(selected_index) else {
+            return;
+        };
+        if item.kind == Kind::Search {
             return;
         };
 
@@ -234,13 +237,12 @@ impl LauncherState {
     }
 
     fn add_to_favorite_by_index(&self, ix: usize, cx: &mut Context<Self>) {
-        let item = {
-            let list = self.list.read(cx);
-            match list.filtered.get(ix) {
-                Some(item) => item.clone(),
-                None => return,
-            }
+        let Some(item) = self.list.read(cx).visible_item(ix).cloned() else {
+            return;
         };
+        if item.kind == Kind::Search {
+            return;
+        }
 
         self.fav.update(cx, |fav, cx| {
             fav.add_favorite(item, cx);
