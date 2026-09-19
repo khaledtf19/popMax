@@ -9,10 +9,10 @@ use crate::{
     windows_icons::extract_icon,
 };
 use rayon::prelude::*;
-use winreg::enums::*;
-use winreg::RegKey;
 use windows::Win32::System::Environment::ExpandEnvironmentStringsW;
 use windows::core::PCWSTR;
+use winreg::RegKey;
+use winreg::enums::*;
 
 struct ScannedApp {
     id: String,
@@ -174,13 +174,11 @@ fn make_registry_id(display_icon: &str, install_location: &str, name: &str) -> S
     format!("reg-{:016x}", h.finish())
 }
 
-fn scan_uninstall_key(
-    key: &RegKey,
-    results: &mut Vec<ScanEntry>,
-    dedup: &mut HashSet<String>,
-) {
+fn scan_uninstall_key(key: &RegKey, results: &mut Vec<ScanEntry>, dedup: &mut HashSet<String>) {
     for name in key.enum_keys().flatten() {
-        let Ok(subkey) = key.open_subkey(&name) else { continue };
+        let Ok(subkey) = key.open_subkey(&name) else {
+            continue;
+        };
 
         // ---- filter out non-app entries ----
         let Ok(display_name): Result<String, _> = subkey.get_value("DisplayName") else {
@@ -306,9 +304,18 @@ fn scan_registry_apps(dedup: &mut HashSet<String>) -> Vec<ScanEntry> {
     let mut results = Vec::new();
 
     let paths = [
-        (HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),
-        (HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"),
-        (HKEY_CURRENT_USER, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),
+        (
+            HKEY_LOCAL_MACHINE,
+            r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
+        ),
+        (
+            HKEY_LOCAL_MACHINE,
+            r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall",
+        ),
+        (
+            HKEY_CURRENT_USER,
+            r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
+        ),
     ];
 
     for (hkey, subkey_path) in &paths {
