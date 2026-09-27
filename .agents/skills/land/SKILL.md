@@ -1,29 +1,36 @@
 ---
 name: land
 description: >-
-  Land the current thread's changes into the PopMax repository on GitHub: run the
-  project's local gates, commit on a feature branch, push, open a pull request,
-  merge it into main with a merge commit, and verify the result. Invoke this only
-  when the user has asked to land, merge, ship, or press "Land Changes" — not for
-  reviewing, preparing, or just running checks.
+  Prepare the current thread's changes for review in the PopMax repository on
+  GitHub: run the project's local gates, commit on a feature branch, push, and open
+  a pull request against main. Stops there — the user reviews and merges, so this
+  skill never merges. Invoke this only when the user has asked to land, open a PR,
+  or press "Land Changes" — not for reviewing, preparing, or just running checks.
 disable-model-invocation: true
 metadata:
   delta-action: land
 ---
 
-# Land a change into `main`
+# Prepare a change for review on `main`
 
-The user has already asked to land. Carry it through to a merged state on `main`
-and verify it arrived. Do **not** ask whether they want to merge — that is the
-request that invoked this skill. Stop only for a genuine blocker: a failing gate,
-ambiguous scope, denied push access, or a conflict that cannot be resolved
-safely.
+The user has already asked to land. Carry it through to an **open pull request**
+and verify it exists. Do **not** ask whether they want a PR — that is the request
+that invoked this skill.
+
+**Never merge.** The user reviews and merges their own changes, and `main` is not
+the agent's to write to. Stopping at an open PR is the successful outcome, not a
+half-finished one. Stop early only for a genuine blocker: a failing gate, ambiguous
+scope, or denied push access.
 
 ## What "landed" means
 
-Success is the change present on `main` at `origin` via a merged pull request.
-Preparing a commit, pushing a branch, or opening a PR is **not** success. If you
-cannot finish, say plainly that the change did not land and why.
+Success is an open pull request against `main` on `origin`, with the branch pushed
+and the PR confirmed to exist. A local commit or a pushed branch that never got a
+PR is **not** success. If you cannot finish, say plainly that the change did not
+land and why.
+
+Merging is explicitly out of scope. Do not run `gh pr merge`, do not push to
+`main`, and do not create a `v*` tag.
 
 ## Repository facts
 
@@ -35,8 +42,8 @@ Verify these still hold rather than assuming; the repository is the source.
   `local` is the user's own checkout. **Push to `origin` only** — a push to
   `local` succeeds without publishing anything.
 - **History convention**: short-lived `feat/*` and `fix/*` branches, merged with
-  true merge commits (`Merge pull request #N from ...`). Use
-  `gh pr merge --merge`, not squash or rebase.
+  true merge commits (`Merge pull request #N from ...`). The user merges, so no
+  merge strategy is chosen here — just target `main` and match the branch naming.
 - **No pull-request CI.** `.github/workflows/release.yml` triggers only on `v*`
   tags, so no check will run on a PR. Local gates below are the real gate; do not
   claim to have awaited CI, and do not treat a missing check as passing.
@@ -55,9 +62,9 @@ Landing usually starts from uncommitted work on `main` (this thread's own edits)
 That is expected — carry it onto a new branch rather than committing to `main`.
 If the tree is clean, stop and say there is nothing to land.
 
-## 2. Run the gates before landing
+## 2. Run the gates before opening the PR
 
-From `AGENTS.md`. Run all three; a failure in any one blocks landing.
+From `AGENTS.md`. Run all three; a failure in any one blocks the PR.
 
 ```sh
 cargo fmt --check
@@ -68,7 +75,7 @@ cargo clippy --all-targets --all-features
 `cargo test` must report `0 failed`, and `cargo fmt --check` must be clean. For
 clippy, compare against the pre-existing baseline rather than demanding zero:
 several warnings already exist in `bangs.rs`, `fav.rs`, `search.rs`, `hotkey.rs`,
-`launcher.rs`, `tray.rs`, and three in `scanner.rs`. Land if the change adds no
+`launcher.rs`, `tray.rs`, and three in `scanner.rs`. Proceed if the change adds no
 *new* warnings; fix or stop if it does.
 
 Build the release binary only if the change plausibly affects packaging or
@@ -81,13 +88,15 @@ Branch names follow the repo's convention: `feat/<kebab-case>` for features,
 
 ```sh
 git switch -c fix/scanner-startup-cache
-GIT_EDITOR=true git add -A
+GIT_EDITOR=true git add <files this change touched>
 GIT_EDITOR=true git commit -m "cache and parallelize app scan"
 ```
 
 Commit messages are short and imperative per `AGENTS.md`
 (e.g. `add themes, update list`), scoped to one logical change. Stage only files
-this change actually touched — do not sweep in unrelated modifications.
+this change actually touched — never `git add -A`, which would sweep in unrelated
+modifications that happen to be sitting in the tree. If the tree contains unrelated
+work, leave it uncommitted and tell the user what you left behind.
 
 ## 4. Push and open the PR
 
@@ -102,36 +111,32 @@ There is no PR template and no required body in this repo, but still write a rea
 body: what changed, why, and how it was verified. State the measured result where
 there is one. If the push is denied, stop and report that the change did not land.
 
-## 5. Merge
+## 5. Verify the PR exists
+
+Do not trust the `gh pr create` exit status alone.
 
 ```sh
-gh pr merge <number> --merge
+gh pr view <number> --json state,url,headRefName,baseRefName
+gh pr checks <number> 2>/dev/null || true
 ```
 
-## 6. Verify it landed
+Confirm the PR is `OPEN`, targets `main`, and points at the branch you pushed.
+Report the PR link so the user can review it. Leave the local branch checked out or
+switch back to `main`; do not delete the local branch, because the change is not
+merged yet. The remote branch stays regardless — the repository has
+`delete_branch_on_merge: false`.
 
-Do not trust the merge command's exit status alone.
+## 6. Stop
 
-```sh
-git fetch origin
-git log --oneline -1 origin/main
-gh pr view <number> --json state,mergeCommit
-```
-
-Confirm the PR state is `MERGED` and that `origin/main` contains the change.
-Then delete the local branch (`git branch -d <branch>`); the remote branch is
-left in place because the repository has `delete_branch_on_merge: false`.
+Report the PR and hand off. Merging, tagging, and releasing are the user's calls.
 
 ## Conflicts
 
-If `gh pr merge` conflicts, **use the `resolving-merge-conflicts` skill** — do not
-re-implement it here. That skill is authoritative for this repository: find the
-primary source of each side, preserve both intents, prefer the change matching the
-merge's goal, never `--abort`, and re-run the gates afterwards.
-
-Resolve automatically when the intended result is clear. Stop and ask only when
-the conflict is genuinely ambiguous or resolving it would mean inventing
-behaviour.
+Merging is not this skill's job, so a merge conflict is not a failure here — it is
+the user's to resolve when they merge. If the user asks you to resolve one, **use
+the `resolving-merge-conflicts` skill** rather than re-implementing it: that skill
+is authoritative for this repository, and it is the only correct route to a
+resolved conflict.
 
 ## Report the outcome
 
@@ -140,11 +145,10 @@ result there. Otherwise report in the conversation.
 
 | Outcome | `status` | `title` | `description` |
 | --- | --- | --- | --- |
-| Merged and verified | `success` | `Landed on main` | `[abc1234](<commit-url>) · [PR #N](<pr-url>).` |
-| A gate failed | `failure` | `Blocked by local checks` | `cargo test failed on [branch](<pr-url>). Not landed.` |
-| Push denied | `failure` | `Push blocked` | `[abc1234](<commit-url>) ready; push access required.` |
-| Unresolved conflict | `failure` | `Merge conflicts` | `[branch](<pr-url>) conflicts with main.` |
+| PR opened and verified | `success` | `PR opened` | `[PR #N](<pr-url>) · [abc1234](<commit-url>). Awaiting your review.` |
+| A gate failed | `failure` | `Blocked by local checks` | `cargo test failed; no branch or PR created.` |
+| Push denied | `failure` | `Push blocked` | `[abc1234](<commit-url>) committed locally; push access required.` |
 
-Use only real, verified URLs and the short SHA actually merged — omit any link
-you have not confirmed exists. Use `success` only after confirming the change
-reached `origin/main`.
+Use only real, verified URLs and the short SHA actually pushed — omit any link you
+have not confirmed exists. Use `success` only after confirming the PR is open
+against `main`. Never report success for a merge: this skill does not merge.
