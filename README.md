@@ -118,6 +118,20 @@ The `build.rs` script embeds `PopMaxIcon.ico` as the app window icon via `embed-
 - **Favorites** are persisted to `%LOCALAPPDATA%\PopMax\favorites.json`
 - **Themes** live in `src/themes/` — the default theme is Tokyo Night
 - **Icon cache** is stored in `%LOCALAPPDATA%\PopMax\icons\`
+- **Scan cache** is stored in `%LOCALAPPDATA%\PopMax\scan_cache.json` — see below
+
+### Scan cache
+
+Scanning the Start Menu means opening every `.lnk` shortcut, which dominates
+startup time. PopMax caches the result and reuses it until something it depends
+on actually changes:
+
+- **Start Menu** — the set of `.lnk` files, each one's modified time and size
+- **Registry** — the subkey count and last-write time of the three `Uninstall` roots
+
+Installing or uninstalling an app, or editing a shortcut, changes the
+fingerprint and triggers a fresh scan. Deleting `scan_cache.json` is always safe;
+it just forces the next scan to be a full one.
 
 ## Technology
 
