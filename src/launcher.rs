@@ -76,7 +76,7 @@ impl LauncherState {
                 ..e.item.clone()
             })
             .collect();
-            
+
         apps.push(Item {
             id: "command:theme_switcher".to_string(),
             name: "Theme Switcher".to_string(),
@@ -84,7 +84,7 @@ impl LauncherState {
             icon_path: None,
             running_command: None,
         });
-        
+
         let themes: Vec<Item> = gpui_component::ThemeRegistry::global(cx)
             .themes()
             .keys()
@@ -249,12 +249,7 @@ impl LauncherState {
         hide_app(self, window, cx);
     }
 
-    fn toggle_favorite(
-        &mut self,
-        _: &ToggleFavorite,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
+    fn toggle_favorite(&mut self, _: &ToggleFavorite, window: &mut Window, cx: &mut Context<Self>) {
         let Some(selected_index) = self.list.read(cx).selected_index else {
             return;
         };
@@ -442,10 +437,26 @@ impl Render for LauncherState {
                     .h_full()
                     .gap_3()
                     .child(
-                        Input::new(&self.input)
-                            .prefix(Icon::new(IconName::Search))
-                            .suffix(kbd::Kbd::new(Keystroke::parse("ctrl-k").unwrap()))
-                            .cleanable(true),
+                        div()
+                            .flex()
+                            .w_full()
+                            .gap_2()
+                            .items_center()
+                            .w_full()
+                            .gap_2()
+                            .child(
+                                Input::new(&self.input)
+                                    .prefix(Icon::new(IconName::Search))
+                                    .suffix(kbd::Kbd::new(Keystroke::parse("ctrl-k").unwrap()))
+                                    .cleanable(true),
+                            )
+                            .child(
+                                gpui_component::button::Button::new("theme_btn")
+                                    .icon(IconName::Settings)
+                                    .on_click(|_event, _window, cx| {
+                                        crate::components::theme_switcher::open(cx);
+                                    }),
+                            ),
                     )
                     .when(has_favorites, |this| this.child(self.fav.clone()))
                     .child(self.list.clone()),
