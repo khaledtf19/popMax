@@ -1,7 +1,8 @@
+use crate::config::AppConfig;
 use gpui::{App, SharedString};
 use gpui_component::{Theme, ThemeRegistry};
 
-const EMBEDDED_THEMES: &[&str] = &[
+pub const EMBEDDED_THEMES: &[&str] = &[
     include_str!("themes/adventure.json"),
     include_str!("themes/alduin.json"),
     include_str!("themes/asciinema.json"),
@@ -26,7 +27,8 @@ const EMBEDDED_THEMES: &[&str] = &[
 ];
 
 pub fn init(cx: &mut App) {
-    let theme_name = SharedString::from("Tokyo Night");
+    let config = AppConfig::load();
+    let theme_name = SharedString::from(config.theme.clone());
 
     let registry = ThemeRegistry::global_mut(cx);
     for content in EMBEDDED_THEMES {
@@ -38,6 +40,6 @@ pub fn init(cx: &mut App) {
         Theme::global_mut(cx).apply_config(&theme_config);
         cx.refresh_windows();
     } else {
-        eprintln!("Theme not found: {theme_name}");
+        eprintln!("Theme not found: {}", theme_name);
     }
 }

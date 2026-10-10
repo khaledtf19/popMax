@@ -12,6 +12,10 @@ pub struct SearchEngine {
 }
 
 impl SearchEngine {
+    pub fn clear(&mut self) {
+        self.nucleo = Nucleo::new(Config::DEFAULT, Arc::new(|| {}), None, 1);
+    }
+
     pub fn new() -> Self {
         Self {
             nucleo: Nucleo::new(Config::DEFAULT, Arc::new(|| {}), None, 1),

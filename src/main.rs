@@ -19,6 +19,7 @@ use crate::launcher::{
 mod autostart;
 mod bangs;
 pub mod components;
+pub mod config;
 pub mod consts;
 mod hotkey;
 mod launcher;
