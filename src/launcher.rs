@@ -26,6 +26,15 @@ pub struct LauncherState {
     fav: Entity<Fav>,
     hwnd: HWND,
     is_visible: bool,
+    apps: Vec<Item>,
+    themes: Vec<Item>,
+    mode: LauncherMode,
+}
+
+#[derive(PartialEq)]
+pub enum LauncherMode {
+    Apps,
+    Themes,
 }
 
 actions!(
@@ -60,15 +69,35 @@ impl LauncherState {
 
         // Phase 1 — fast: scan app names only, show list immediately with placeholder icons.
         let scan_entries = Arc::new(scan_apps_fast());
-        let items: Vec<Item> = scan_entries
+        let mut apps: Vec<Item> = scan_entries
             .iter()
             .map(|e| Item {
                 icon_path: None,
                 ..e.item.clone()
             })
             .collect();
+            
+        apps.push(Item {
+            id: "command:theme_switcher".to_string(),
+            name: "Theme Switcher".to_string(),
+            kind: Kind::Command,
+            icon_path: None,
+            running_command: None,
+        });
+        
+        let themes: Vec<Item> = gpui_component::ThemeRegistry::global(cx)
+            .themes()
+            .keys()
+            .map(|k| Item {
+                id: format!("theme:{}", k.to_string()),
+                name: format!("Theme: {}", k.to_string()),
+                kind: Kind::Command,
+                icon_path: None,
+                running_command: None,
+            })
+            .collect();
 
-        let list = cx.new(|_cx| LauncherList::new(items));
+        let list = cx.new(|_cx| LauncherList::new(apps.clone()));
 
         // Phase 2 — background: extract all icons in parallel, then batch-update the list.
         let bg_entries = scan_entries.clone();
@@ -78,12 +107,19 @@ impl LauncherState {
                 .spawn(async move { crate::scanner::extract_icons_batch(&bg_entries) })
                 .await;
             this.update_in(cx, |this, _window, cx| {
-                this.list.update(cx, |list, cx| {
-                    list.apply_icons(&icons);
-                    cx.notify();
-                });
+                for (id, icon_path) in &icons {
+                    if let Some(item) = this.apps.iter_mut().find(|i| i.id == *id) {
+                        item.icon_path = icon_path.clone();
+                    }
+                }
+                if this.mode == LauncherMode::Apps {
+                    this.list.update(cx, |list, cx| {
+                        list.apply_icons(&icons);
+                        cx.notify();
+                    });
+                }
 
-                let fresh_items: Vec<Item> = this.list.read(cx).items.clone();
+                let fresh_items: Vec<Item> = this.apps.clone();
                 this.fav.update(cx, |fav, cx| {
                     let mut changed = false;
                     for f in &mut fav.favorites {
@@ -142,6 +178,9 @@ impl LauncherState {
             fav,
             hwnd,
             is_visible,
+            apps,
+            themes,
+            mode: LauncherMode::Apps,
         }
     }
 
@@ -149,14 +188,14 @@ impl LauncherState {
         self.list.read(cx).items.get(ix).cloned()
     }
 
-    fn select_next(&mut self, _: &SelectNext, _window: &mut Window, cx: &mut Context<Self>) {
+    fn select_next(&mut self, _: &SelectNext, window: &mut Window, cx: &mut Context<Self>) {
         self.list.update(cx, |list, cx| {
             list.select_next();
             cx.notify();
         });
     }
 
-    fn select_prev(&mut self, _: &SelectPrev, _window: &mut Window, cx: &mut Context<Self>) {
+    fn select_prev(&mut self, _: &SelectPrev, window: &mut Window, cx: &mut Context<Self>) {
         self.list.update(cx, |list, cx| {
             list.select_prev();
             cx.notify();
@@ -213,7 +252,7 @@ impl LauncherState {
     fn toggle_favorite(
         &mut self,
         _: &ToggleFavorite,
-        _window: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         let Some(selected_index) = self.list.read(cx).selected_index else {
@@ -315,7 +354,11 @@ fn hide_app(this: &mut LauncherState, window: &mut Window, cx: &mut Context<'_, 
     this.input.update(cx, |input, cx| {
         input.set_value("", window, cx);
     });
+    this.mode = LauncherMode::Apps;
     this.list.update(cx, |list, cx| {
+        list.items = this.apps.clone();
+        list.search.clear();
+        list.search.add(&list.items);
         list.update_filtered("", cx);
     });
 
