@@ -6,9 +6,9 @@ use crate::components::{fav::Fav, list::LauncherList};
 use crate::consts;
 use crate::scanner::scan_apps_fast;
 use crate::types::{Item, Kind};
-use gpui::prelude::FluentBuilder;
-use gpui::*;
-use gpui_component::{
+use gpui_kit::prelude::FluentBuilder;
+use gpui_kit::*;
+use gpui_kit::component::{
     ActiveTheme, Icon, IconName,
     input::{Input, InputEvent, InputState},
     kbd,
@@ -85,7 +85,7 @@ impl LauncherState {
             running_command: None,
         });
 
-        let themes: Vec<Item> = gpui_component::ThemeRegistry::global(cx)
+        let themes: Vec<Item> = gpui_kit::component::ThemeRegistry::global(cx)
             .themes()
             .keys()
             .map(|k| Item {
@@ -451,7 +451,7 @@ impl Render for LauncherState {
                                     .cleanable(true),
                             )
                             .child(
-                                gpui_component::button::Button::new("theme_btn")
+                                gpui_kit::component::button::Button::new("theme_btn")
                                     .icon(IconName::Settings)
                                     .on_click(|_event, _window, cx| {
                                         crate::components::theme_switcher::open(cx);
@@ -463,3 +463,6 @@ impl Render for LauncherState {
             )
     }
 }
+
+
+
