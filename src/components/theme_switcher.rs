@@ -1,7 +1,7 @@
 use crate::config::AppConfig;
-use gpui::*;
-use gpui_component::scroll::ScrollableElement;
-use gpui_component::{ActiveTheme, Root, button::Button};
+use gpui_kit::*;
+use gpui_kit::component::scroll::ScrollableElement;
+use gpui_kit::component::{ActiveTheme, Root, button::Button};
 
 pub struct ThemeSwitcher {
     themes: Vec<SharedString>,
@@ -9,7 +9,7 @@ pub struct ThemeSwitcher {
 
 impl ThemeSwitcher {
     pub fn new(cx: &mut Context<Self>) -> Self {
-        let mut themes: Vec<SharedString> = gpui_component::ThemeRegistry::global(cx)
+        let mut themes: Vec<SharedString> = gpui_kit::component::ThemeRegistry::global(cx)
             .themes()
             .keys()
             .cloned()
@@ -61,12 +61,12 @@ impl Render for ThemeSwitcher {
                         Button::new(t.clone()).label(t.clone()).on_click(
                             move |_event, _window, cx| {
                                 if let Some(theme_config) =
-                                    gpui_component::ThemeRegistry::global(cx)
+                                    gpui_kit::component::ThemeRegistry::global(cx)
                                         .themes()
                                         .get(&theme_name)
                                         .cloned()
                                 {
-                                    gpui_component::Theme::global_mut(cx)
+                                    gpui_kit::component::Theme::global_mut(cx)
                                         .apply_config(&theme_config);
                                     cx.refresh_windows();
 
@@ -108,6 +108,8 @@ pub fn open(cx: &mut App) {
             window_decorations: Some(WindowDecorations::Server),
             icon: None,
             tabbing_identifier: None,
+            app_owns_titlebar_drag: false,
+            inactive_frame_interval: None,
         },
         |window, cx| {
             let view = cx.new(|cx| ThemeSwitcher::new(cx));
@@ -116,3 +118,5 @@ pub fn open(cx: &mut App) {
     )
     .expect("Failed to open theme switcher window");
 }
+
+

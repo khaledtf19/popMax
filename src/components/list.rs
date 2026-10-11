@@ -5,12 +5,12 @@ use crate::components::search::SearchEngine;
 use crate::consts;
 use crate::types::{Item, Kind};
 use crate::utils::asset_path;
-use gpui::img;
-use gpui::prelude::FluentBuilder;
-use gpui::*;
-use gpui_component::button::{Button, ButtonVariants};
-use gpui_component::label::Label;
-use gpui_component::{ActiveTheme, IconName, VirtualListScrollHandle, h_flex, v_virtual_list};
+use gpui_kit::img;
+use gpui_kit::prelude::FluentBuilder;
+use gpui_kit::*;
+use gpui_kit::component::button::{Button, ButtonVariants};
+use gpui_kit::component::label::Label;
+use gpui_kit::component::{ActiveTheme, IconName, VirtualListScrollHandle, h_flex, v_virtual_list};
 use webbrowser;
 use widestring::u16cstr;
 use windows::Win32::UI::WindowsAndMessaging::{FindWindowW, SW_HIDE, ShowWindow};
@@ -295,3 +295,4 @@ impl Render for LauncherList {
         .track_scroll(&self.scroll_handle)
     }
 }
+

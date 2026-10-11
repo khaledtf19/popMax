@@ -1,7 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use gpui::*;
-use gpui_component::Root;
+use gpui_kit::*;
+use gpui_kit::component::Root;
 use widestring::u16cstr;
 use windows::{
     Win32::{
@@ -42,11 +42,11 @@ fn main() {
     autostart::apply_startup_setting();
     tray::start();
 
-    let app = gpui_platform::application().with_assets(gpui_component_assets::Assets);
+    let app = gpui_kit::platform::application().with_assets(gpui_kit::assets::Assets);
 
     app.run(move |cx| {
         // This must be called before using any GPUI Component features.
-        gpui_component::init(cx);
+        gpui_kit::component::init(cx);
         load_themes::init(cx);
 
         cx.bind_keys([
@@ -83,6 +83,8 @@ fn main() {
                 window_decorations: Some(WindowDecorations::Client),
                 icon: None,
                 tabbing_identifier: None,
+                app_owns_titlebar_drag: false,
+                inactive_frame_interval: None,
             },
             |window, cx| {
                 let view = cx.new(|cx| LauncherState::new(window, cx, hotkey_rx));
@@ -134,3 +136,5 @@ fn show_existing_instance() {
         }
     }
 }
+
+

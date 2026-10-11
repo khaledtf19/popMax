@@ -1,6 +1,6 @@
 use crate::config::AppConfig;
-use gpui::{App, SharedString};
-use gpui_component::{Theme, ThemeRegistry};
+use gpui_kit::{App, SharedString};
+use gpui_kit::component::{Theme, ThemeRegistry};
 
 pub const EMBEDDED_THEMES: &[&str] = &[
     include_str!("themes/adventure.json"),
@@ -43,3 +43,4 @@ pub fn init(cx: &mut App) {
         eprintln!("Theme not found: {}", theme_name);
     }
 }
+

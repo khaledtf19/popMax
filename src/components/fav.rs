@@ -5,8 +5,8 @@ use crate::{
     types::{Item, Kind},
     utils::{asset_path, get_load_path},
 };
-use gpui::*;
-use gpui_component::{
+use gpui_kit::*;
+use gpui_kit::component::{
     ActiveTheme, IconName, Sizable,
     button::{Button, ButtonVariants},
     h_flex,
@@ -142,7 +142,7 @@ impl Render for Fav {
                                     .ghost()
                                     .icon(IconName::Close)
                                     .compact()
-                                    .with_size(gpui_component::Size::XSmall)
+                                    .with_size(gpui_kit::component::Size::XSmall)
                                     .on_click(cx.listener(move |this, _, _, cx| {
                                         cx.stop_propagation();
                                         this.remove_favorite(&remove_id, cx);
@@ -163,3 +163,4 @@ impl Render for Fav {
         )
     }
 }
+
